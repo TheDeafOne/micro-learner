@@ -135,7 +135,7 @@ async def main():
     summary_prompts = [summarize_prompt.format(transcript_text=t) for t in transcripts]
     responses = await multi_query(summary_prompts)
 
-    notes_dir = "lecture_notes"
+    notes_dir = "lecture-notes"
     out_path = f"{notes_dir}/Module {n}.md".replace(" ", "_")
     with open(out_path, "w", encoding="utf-8", newline="") as f:
         f.write("\n\n".join(map(str, responses)))
