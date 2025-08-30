@@ -41,7 +41,7 @@ def get_transcript_text(url: str) -> str | None:
         )
         try:
             page = ctx.new_page()
-            page.goto(url, wait_until="domcontentloaded", timeout=60_000)
+            page.goto(url, wait_until="domcontentloaded", timeout=6000)
 
             # If we hit Microsoft/ADFS, wait until we’re back on Panopto (same tab or a new one)
             if re.search(r"(microsoftonline\.com|/adfs/|/sts/)", page.url, re.I):
@@ -67,7 +67,7 @@ def get_transcript_text(url: str) -> str | None:
                 )
             except:
                 # Give it a little more time if late-injected
-                page.wait_for_load_state("networkidle", timeout=60_000)
+                page.wait_for_load_state("networkidle", timeout=6000)
 
             html = page.content()
             return _extract_captions_from_html(html)

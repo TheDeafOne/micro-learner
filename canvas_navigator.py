@@ -200,10 +200,15 @@ async def main():
 
     if panopto_links:
         panopto_transcripts_dict = await asyncio.to_thread(
-            zts.get_transcripts, panopto_links
+            pts.get_transcripts, panopto_links
         )
         transcripts.extend(list(panopto_transcripts_dict.values()))
 
+    notes_dir = "lecture-notes"
+
+    raw_out_path = f"{notes_dir}/raw/{course_id} Module {n} raw.md".replace(" ", "_")
+    with open(raw_out_path, "w", encoding="utf-8", newline="") as f:
+        f.write("\n\n".join(map(str, transcripts)))
     summarize_prompt = """
         Summarize this transcript. Describe only the details, don't reference to the speaker or talk in at a higher level.
         Just provide the summarized information in a concise format. Response in markdown. Here is the transcript:
@@ -212,8 +217,7 @@ async def main():
     summary_prompts = [summarize_prompt.format(transcript_text=t) for t in transcripts]
     responses = await multi_query(summary_prompts)
 
-    notes_dir = "lecture-notes"
-    out_path = f"{notes_dir}/Module {n}.md".replace(" ", "_")
+    out_path = f"{notes_dir}/{course_id} Module {n}.md".replace(" ", "_")
     with open(out_path, "w", encoding="utf-8", newline="") as f:
         f.write("\n\n".join(map(str, responses)))
 
