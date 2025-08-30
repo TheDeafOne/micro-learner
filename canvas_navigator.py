@@ -2,13 +2,14 @@
 import asyncio
 import os
 import sys
-from urllib.parse import urljoin
+from urllib.parse import parse_qs, urlencode, urljoin, urlparse, urlunparse
 
 import requests
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 
 import llm
+import panopto_transcript_scraper as pts
 import zoom_transcript_scraper as zts
 from llm import multi_query
 
@@ -43,6 +44,15 @@ def find_ai_course():
     for c in courses:
         name = (c.get("name") or c.get("course_code") or "").lower()
         if "artificial intelligence" in name:
+            return c["id"]
+    sys.exit("AI course not found in your Canvas list.")
+
+
+def find_ml_course():
+    courses = get_all(urljoin(BASE, "/api/v1/courses"), params={"per_page": 100})
+    for c in courses:
+        name = (c.get("name") or c.get("course_code") or "").lower()
+        if "machine learning" in name:
             return c["id"]
     sys.exit("AI course not found in your Canvas list.")
 
@@ -99,9 +109,66 @@ def get_page_body(course_id, page_url):
     return r.json().get("body", "")
 
 
-def extract_links(html):
+def _to_panopto_viewer(url: str) -> str:
+    try:
+        u = urlparse(url)
+        if "panopto.com" not in u.netloc.lower():
+            return url
+        pid = (parse_qs(u.query).get("id") or [None])[0]
+        if "Viewer.aspx" in u.path and pid:
+            # normalize to clean viewer URL with just ?id=
+            return urlunparse(
+                (
+                    u.scheme,
+                    u.netloc,
+                    "/Panopto/Pages/Viewer.aspx",
+                    "",
+                    urlencode({"id": pid}),
+                    "",
+                )
+            )
+        if "Embed.aspx" in u.path:
+            # convert embed -> viewer (prefer clean ?id= form)
+            return urlunparse(
+                (
+                    u.scheme,
+                    u.netloc,
+                    "/Panopto/Pages/Viewer.aspx",
+                    "",
+                    urlencode({"id": pid}) if pid else u.query,
+                    "",
+                )
+            )
+        return url
+    except Exception:
+        return url
+
+
+def extract_links(html: str):
     soup = BeautifulSoup(html, "html.parser")
-    return [a["href"] for a in soup.select("a[href]")]
+
+    # 1) Normal anchors, if any
+    hrefs = [a.get("href") for a in soup.select("a[href]") if a.get("href")]
+    if hrefs:
+        # de-dupe, preserve order
+        return list(dict.fromkeys(hrefs))
+
+    # 2) Fallback to Panopto
+    panopto = []
+
+    # 2a) og:url (sometimes present in embedded/preview HTML)
+    for m in soup.find_all("meta", attrs={"property": "og:url"}):
+        c = m.get("content")
+        if c and "panopto.com" in c.lower():
+            panopto.append(_to_panopto_viewer(c))
+
+    # 2b) iframe embeds
+    for iframe in soup.select("iframe[src]"):
+        src = iframe.get("src", "")
+        if "panopto.com" in src.lower():
+            panopto.append(_to_panopto_viewer(src))
+
+    return list(dict.fromkeys(panopto))
 
 
 async def main():
@@ -110,7 +177,7 @@ async def main():
         sys.exit(1)
     n = int(sys.argv[1])
 
-    course_id = find_ai_course()
+    course_id = find_ml_course()
     module_id, module_name = find_module(course_id, n)
     page_url, page_title = find_lectures_page(course_id, module_id, n)
     body = get_page_body(course_id, page_url)
@@ -124,8 +191,18 @@ async def main():
 
     print(f"links: {links}")
 
-    transcripts_dict = await asyncio.to_thread(zts.get_transcripts, links)
-    transcripts = list(transcripts_dict.values())
+    zoom_links = [link for link in links if "zoom.us" in link]
+    panopto_links = [link for link in links if "panopto.com" in link]
+    transcripts = []
+    if zoom_links:
+        zoom_transcripts_dict = await asyncio.to_thread(zts.get_transcripts, zoom_links)
+        transcripts.extend(list(zoom_transcripts_dict.values()))
+
+    if panopto_links:
+        panopto_transcripts_dict = await asyncio.to_thread(
+            zts.get_transcripts, panopto_links
+        )
+        transcripts.extend(list(panopto_transcripts_dict.values()))
 
     summarize_prompt = """
         Summarize this transcript. Describe only the details, don't reference to the speaker or talk in at a higher level.
