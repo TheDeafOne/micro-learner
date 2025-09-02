@@ -57,6 +57,15 @@ def find_ml_course():
     sys.exit("AI course not found in your Canvas list.")
 
 
+def find_sma_course():
+    courses = get_all(urljoin(BASE, "/api/v1/courses"), params={"per_page": 100})
+    for c in courses:
+        name = (c.get("name") or c.get("course_code") or "").lower()
+        if "social media" in name:
+            return c["id"]
+    sys.exit("AI course not found in your Canvas list.")
+
+
 def find_module(course_id, n):
     mods = get_all(
         urljoin(BASE, f"/api/v1/courses/{course_id}/modules"), params={"per_page": 100}
@@ -148,10 +157,10 @@ def extract_links(html: str):
     soup = BeautifulSoup(html, "html.parser")
 
     # 1) Normal anchors, if any
-    hrefs = [a.get("href") for a in soup.select("a[href]") if a.get("href")]
-    if hrefs:
-        # de-dupe, preserve order
-        return list(dict.fromkeys(hrefs))
+    # hrefs = [a.get("href") for a in soup.select("a[href]") if a.get("href")]
+    # if hrefs:
+    #     # de-dupe, preserve order
+    #     return list(dict.fromkeys(hrefs))
 
     # 2) Fallback to Panopto
     panopto = []
@@ -177,7 +186,7 @@ async def main():
         sys.exit(1)
     n = int(sys.argv[1])
 
-    course_id = find_ai_course()
+    course_id = find_sma_course()
     module_id, module_name = find_module(course_id, n)
     page_url, page_title = find_lectures_page(course_id, module_id, n)
     body = get_page_body(course_id, page_url)
