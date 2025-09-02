@@ -121,7 +121,7 @@ def get_transcripts(urls: Union[str, List[str]]) -> Dict[str, str | None]:
                     # Captions are present in the initial HTML, but may be injected a bit late
                     try:
                         page.wait_for_selector(
-                            'ul.event-tab-list[aria-label="Captions"]', timeout=10_000
+                            'ul.event-tab-list[aria-label="Captions"]', timeout=5000
                         )
                     except Exception:
                         page.wait_for_load_state("networkidle", timeout=6000)
