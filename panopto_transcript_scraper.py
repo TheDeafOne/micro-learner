@@ -113,7 +113,7 @@ def get_transcripts(urls: Union[str, List[str]]) -> Dict[str, str | None]:
             for url in urls:
                 try:
                     print(f"Opening: {url}")
-                    page.goto(url, wait_until="domcontentloaded", timeout=6000)
+                    page.goto(url, wait_until="domcontentloaded", timeout=10000)
 
                     # Wait out Microsoft SSO if it appears
                     page = _ensure_panopto_page(page, ctx)
@@ -121,10 +121,10 @@ def get_transcripts(urls: Union[str, List[str]]) -> Dict[str, str | None]:
                     # Captions are present in the initial HTML, but may be injected a bit late
                     try:
                         page.wait_for_selector(
-                            'ul.event-tab-list[aria-label="Captions"]', timeout=5000
+                            'ul.event-tab-list[aria-label="Captions"]', timeout=10000
                         )
                     except Exception:
-                        page.wait_for_load_state("networkidle", timeout=6000)
+                        page.wait_for_load_state("networkidle", timeout=10000)
 
                     html = page.content()
                     results[url] = _extract_captions_from_html(html)
