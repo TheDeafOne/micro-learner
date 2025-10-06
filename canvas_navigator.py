@@ -186,7 +186,7 @@ async def main():
         sys.exit(1)
     n = int(sys.argv[1])
 
-    course_id = find_ai_course()
+    course_id = find_ml_course()
     module_id, module_name = find_module(course_id, n)
     page_url, page_title = find_lectures_page(course_id, module_id, n)
     body = get_page_body(course_id, page_url)
