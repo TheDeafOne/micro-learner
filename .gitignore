@@ -1,5 +1,5 @@
 # project specific
-./data/*
+./data/
 *.db
 
 # Byte-compiled / optimized / DLL files
