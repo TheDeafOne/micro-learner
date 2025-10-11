@@ -1,23 +1,43 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
-from typing import Dict, List, Union
+from typing import Dict, List, Tuple, Union
 
 from playwright.sync_api import sync_playwright
 
-PROFILE_DIR = Path("edge-profile")  # persists cookies/session across runs
+DEFAULT_PROFILE_DIR = Path("edge-profile")  # persists cookies/session across runs
+
+
+def _playwright_config() -> Tuple[str, Path, bool]:
+    channel = os.getenv("PLAYWRIGHT_BROWSER_CHANNEL", "msedge").strip()
+    profile_dir = Path(os.getenv("PLAYWRIGHT_USER_DATA_DIR", DEFAULT_PROFILE_DIR.as_posix()))
+    headless = os.getenv("PLAYWRIGHT_HEADLESS", "false").lower() in {"1", "true", "yes"}
+    return channel, profile_dir, headless
+
+
+def _launch_context(pw):
+    channel, profile_dir, headless = _playwright_config()
+    kwargs = {
+        "user_data_dir": str(profile_dir),
+        "headless": headless,
+    }
+    if channel:
+        kwargs["channel"] = channel
+    try:
+        return pw.chromium.launch_persistent_context(**kwargs)
+    except Exception:
+        if channel and channel.lower() != "chromium":
+            kwargs.pop("channel", None)
+            return pw.chromium.launch_persistent_context(**kwargs)
+        raise
 
 
 def get_transcript_text(url):
     with sync_playwright() as pw:
-        # Use installed Edge, headed (no headless.exe); avoids the firewall block
-        ctx = pw.chromium.launch_persistent_context(
-            user_data_dir=str(PROFILE_DIR),
-            channel="msedge",
-            headless=False,
-        )
+        ctx = _launch_context(pw)
         page = ctx.new_page()
         page.goto(url, wait_until="domcontentloaded")
         text = page.locator(".transcript-container").inner_text()
@@ -33,11 +53,7 @@ def get_transcripts(urls: Union[str, List[str]]) -> Dict[str, str]:
 
     results: Dict[str, str] = {}
     with sync_playwright() as pw:
-        ctx = pw.chromium.launch_persistent_context(
-            user_data_dir=str(PROFILE_DIR),  # existing profile with your SSO
-            channel="msedge",
-            headless=False,
-        )
+        ctx = _launch_context(pw)
         try:
             for url in urls:
                 text = None

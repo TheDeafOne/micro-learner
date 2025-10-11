@@ -34,11 +34,13 @@ class Item(SQLModel, table=True):
     module_id: int = Field(foreign_key="module.id", index=True)
     type: Optional[str] = None
     title: str
+    page_url: Optional[str] = None
     canvas_url: Optional[str] = None
     provider: Optional[str] = None
     status: ItemStatus = Field(default=ItemStatus.DISCOVERED)
     error: Optional[str] = None
     last_synced_at: Optional[datetime] = None
+    media_urls: Optional[str] = None
 
 
 class Artifact(SQLModel, table=True):

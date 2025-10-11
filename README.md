@@ -37,6 +37,9 @@ Set the following variables in `.env`:
 - `OPENAI_API_KEY` – optional; leave blank to use the mock summarizer
 - `DATA_DIR` – where transcript/summary files are written (default `./data`)
 - `DATABASE_URL` – SQLite connection string (default `sqlite:///./backend.db`)
+- `PLAYWRIGHT_BROWSER_CHANNEL` – browser channel for Playwright (`chromium`, `msedge`, etc.)
+- `PLAYWRIGHT_USER_DATA_DIR` – path to reuse browser profile (default `edge-profile`)
+- `PLAYWRIGHT_HEADLESS` – `true` to run Playwright headless, otherwise `false`
 
 The app auto-creates database tables and ensures transcript/summary directories exist under `DATA_DIR`.
 
@@ -65,15 +68,16 @@ uv run uvicorn backend.main:app --reload
 5. **Browse data** – `GET /courses/{id}`, `GET /courses/{id}/modules`, `GET /modules/{id}/items`
 6. **Fetch transcript** – `POST /items/{id}/fetch-transcript`  
    Queues a background job that launches the appropriate provider:
-   - Panopto → `panopto_transcript_scraper.get_transcript_text` (Edge profile, waits for SSO)
-   - Zoom → `zoom_transcript_scraper.get_transcript_text`
+   - Panopto → `panopto_transcript_scraper.get_transcripts`
+   - Zoom → `zoom_transcript_scraper.get_transcripts`
    - Other → fake provider that returns placeholder text
 
    The job writes `data/transcripts/{item_id}.txt`, stores/updates an artifact record, and moves the item status to `TRANSCRIPT_READY`.
+   For Canvas Pages, the task fetches the page body, extracts every Panopto/Zoom link (mirroring `extract_links` from `canvas_navigator.py`), transcribes them all, and concatenates the transcripts into a single artifact.
 7. **Summarize** – `POST /items/{id}/summarize`  
    Requires an existing transcript. Writes `data/summaries/{item_id}.md`, creates/updates the summary artifact, and sets status to `SUMMARY_READY`.
 8. **Inspect status** – `GET /items/{id}`  
-   Returns item metadata plus paths to the generated artifacts.
+   Returns item metadata, detected media links, and paths to the generated artifacts.
 
 Background tasks run inside the FastAPI process using `BackgroundTasks`, so the responses return immediately while work continues asynchronously.
 

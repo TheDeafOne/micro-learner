@@ -1,16 +1,41 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import os
 import re
 import sys
 from pathlib import Path
-from typing import Dict, List, Union
+from typing import Dict, List, Tuple, Union
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
 
-PROFILE_DIR = Path("edge-profile")  # persists cookies/session across runs
+DEFAULT_PROFILE_DIR = Path("edge-profile")  # persists cookies/session across runs
+
+
+def _playwright_config() -> Tuple[str, Path, bool]:
+    channel = os.getenv("PLAYWRIGHT_BROWSER_CHANNEL", "msedge").strip()
+    profile_dir = Path(os.getenv("PLAYWRIGHT_USER_DATA_DIR", DEFAULT_PROFILE_DIR.as_posix()))
+    headless = os.getenv("PLAYWRIGHT_HEADLESS", "false").lower() in {"1", "true", "yes"}
+    return channel, profile_dir, headless
+
+
+def _launch_context(pw):
+    channel, profile_dir, headless = _playwright_config()
+    kwargs = {
+        "user_data_dir": str(profile_dir),
+        "headless": headless,
+    }
+    if channel:
+        kwargs["channel"] = channel
+    try:
+        return pw.chromium.launch_persistent_context(**kwargs)
+    except Exception:
+        if channel and channel.lower() != "chromium":
+            kwargs.pop("channel", None)
+            return pw.chromium.launch_persistent_context(**kwargs)
+        raise
 
 
 def _extract_captions_from_html(html: str) -> str | None:
@@ -34,11 +59,7 @@ def _extract_captions_from_html(html: str) -> str | None:
 def get_transcript_text(url: str) -> str | None:
     print(f"Opening: {url}")
     with sync_playwright() as pw:
-        ctx = pw.chromium.launch_persistent_context(
-            user_data_dir=str(PROFILE_DIR),
-            channel="msedge",
-            headless=False,
-        )
+        ctx = _launch_context(pw)
         try:
             page = ctx.new_page()
             page.goto(url, wait_until="domcontentloaded", timeout=10000)
@@ -103,11 +124,7 @@ def get_transcripts(urls: Union[str, List[str]]) -> Dict[str, str | None]:
 
     results: Dict[str, str | None] = {}
     with sync_playwright() as pw:
-        ctx = pw.chromium.launch_persistent_context(
-            user_data_dir=str(PROFILE_DIR),
-            channel="msedge",
-            headless=False,
-        )
+        ctx = _launch_context(pw)
         try:
             page = ctx.new_page()
             for url in urls:

@@ -7,6 +7,9 @@ if __name__ == "__main__" and __package__ is None:  # pragma: no cover - script 
     sys.path.append(str(Path(__file__).resolve().parent.parent))
     __package__ = "backend"
 
+import json
+import logging
+from collections import defaultdict
 from datetime import datetime
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
@@ -15,18 +18,27 @@ from sqlmodel import Session, select
 from backend.canvas_client import CanvasClient
 from backend.deps import get_engine, get_session, init_db
 from backend.models import Artifact, Course, Item, ItemStatus, Module
-from backend.providers import infer_provider_from_url, normalize_provider_url, resolve_provider
+from backend.providers import (
+    extract_media_entries,
+    infer_provider_from_url,
+    normalize_provider_url,
+    resolve_provider,
+)
 from backend.schemas import (
     ArtifactRead,
     CourseRead,
     ItemDetail,
     ItemRead,
+    MediaLink,
     ModuleRead,
     RefreshResult,
 )
 from backend.settings import Settings, get_settings
 from backend.storage import ensure_data_dirs, transcript_path, write_summary, write_transcript
 from backend.summarizer import summarize_transcript
+
+
+logger = logging.getLogger(__name__)
 
 
 app = FastAPI(title="Canvas Summarization Backend")
@@ -37,6 +49,43 @@ def on_startup() -> None:
     settings = get_settings()
     init_db()
     ensure_data_dirs(settings)
+    if not logging.getLogger().handlers:
+        logging.basicConfig(level=logging.INFO)
+
+
+def parse_media_entries(media_json: str | None) -> list[dict[str, str]]:
+    if not media_json:
+        return []
+    try:
+        data = json.loads(media_json)
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(data, list):
+        return []
+    entries: list[dict[str, str]] = []
+    for entry in data:
+        if not isinstance(entry, dict):
+            continue
+        provider = entry.get("provider")
+        url = entry.get("url")
+        if not provider or not url:
+            continue
+        entries.append({"provider": provider, "url": url})
+    return entries
+
+
+def format_transcript_bundle(sections: list[tuple[str, str, str]]) -> str:
+    if not sections:
+        return ""
+    lines: list[str] = []
+    for idx, (provider, url, text) in enumerate(sections, start=1):
+        heading = f"## Transcript {idx} ({provider})"
+        lines.append(heading)
+        lines.append(f"Source: {url}")
+        lines.append("")
+        lines.append((text or "").strip())
+        lines.append("")
+    return "\n".join(lines).strip()
 
 
 @app.get("/health")
@@ -146,13 +195,32 @@ async def refresh_modules(
                 item_type = item_payload.get("type")
                 html_url = item_payload.get("html_url") or item_payload.get("url")
                 provider = infer_provider_from_url(html_url)
-                normalized_url = normalize_provider_url(provider, html_url)
+                page_url_slug = item_payload.get("page_url")
+                media_entries: list[dict[str, str]] = []
+
+                if item_type == "Page" and page_url_slug:
+                    try:
+                        page_body = await client.fetch_page_body(course_id, page_url_slug)
+                    except Exception:
+                        page_body = ""
+                    media_entries = extract_media_entries(page_body)
+                    if media_entries and not provider:
+                        provider = media_entries[0]["provider"]
+                elif provider:
+                    normalized_url = normalize_provider_url(provider, html_url)
+                    target_url = normalized_url or html_url
+                    if target_url:
+                        media_entries.append({"provider": provider, "url": target_url})
+
+                media_json = json.dumps(media_entries) if media_entries else None
 
                 if item:
                     item.title = title
                     item.type = item_type
-                    item.canvas_url = normalized_url or html_url
-                    item.provider = provider or item.provider
+                    item.page_url = page_url_slug
+                    item.canvas_url = html_url
+                    item.provider = provider
+                    item.media_urls = media_json
                     item.last_synced_at = now
                 else:
                     item = Item(
@@ -160,10 +228,12 @@ async def refresh_modules(
                         module_id=module_id,
                         title=title,
                         type=item_type,
-                        canvas_url=normalized_url or html_url,
+                        page_url=page_url_slug,
+                        canvas_url=html_url,
                         provider=provider,
                         status=ItemStatus.DISCOVERED,
                         last_synced_at=now,
+                        media_urls=media_json,
                     )
                     session.add(item)
                 item_count += 1
@@ -192,11 +262,13 @@ def get_item(item_id: int, session: Session = Depends(get_session)) -> ItemDetai
     transcript_artifact = next((a for a in artifacts if a.kind == "transcript"), None)
     summary_artifact = next((a for a in artifacts if a.kind == "summary"), None)
     item_payload = ItemRead.model_validate(item).model_dump()
+    media_entries = parse_media_entries(item.media_urls)
     return ItemDetail(
         **item_payload,
         transcript_path=transcript_artifact.path if transcript_artifact else None,
         summary_path=summary_artifact.path if summary_artifact else None,
         artifacts=[ArtifactRead.model_validate(a) for a in artifacts],
+        media_links=[MediaLink(**entry) for entry in media_entries],
     )
 
 
@@ -247,8 +319,58 @@ def run_transcript_job(item_id: int, settings: Settings) -> None:
         if not item:
             return
         try:
-            provider = resolve_provider(item)
-            transcript_text = provider.fetch(item)
+            logger.info("Starting transcript job for item %s", item_id)
+            media_entries = parse_media_entries(item.media_urls)
+            if not media_entries:
+                fallback_provider = infer_provider_from_url(item.canvas_url)
+                fallback_url = (
+                    normalize_provider_url(fallback_provider, item.canvas_url)
+                    if fallback_provider
+                    else item.canvas_url
+                )
+                if fallback_url:
+                    media_entries.append(
+                        {
+                            "provider": fallback_provider or (item.provider or "fake"),
+                            "url": fallback_url,
+                        }
+                    )
+
+            grouped_urls: dict[str, list[str]] = defaultdict(list)
+            for entry in media_entries:
+                provider_name = (entry.get("provider") or "fake").lower()
+                url = entry.get("url")
+                if not url:
+                    continue
+                grouped_urls[provider_name].append(url)
+
+            if not grouped_urls:
+                grouped_urls[(item.provider or "fake").lower()] = [item.canvas_url] if item.canvas_url else []
+
+            transcript_sections: list[tuple[str, str, str]] = []
+            missing_urls: list[str] = []
+
+            for provider_name, urls in grouped_urls.items():
+                urls = [u for u in urls if u]
+                if not urls:
+                    continue
+                provider = resolve_provider(item, provider_name)
+                transcripts = provider.fetch(item, urls)
+                for url in urls:
+                    text = transcripts.get(url)
+                    if text:
+                        transcript_sections.append((provider.name, url, text))
+                    else:
+                        missing_urls.append(url)
+
+            if not transcript_sections:
+                if missing_urls:
+                    raise RuntimeError(
+                        "No transcripts retrieved for URLs: " + ", ".join(missing_urls)
+                    )
+                raise RuntimeError("No transcripts could be retrieved")
+
+            transcript_text = format_transcript_bundle(transcript_sections)
             path = write_transcript(item.id, transcript_text, settings)
             artifact = session.exec(
                 select(Artifact).where(Artifact.item_id == item.id, Artifact.kind == "transcript")
@@ -268,7 +390,9 @@ def run_transcript_job(item_id: int, settings: Settings) -> None:
             item.error = None
             session.add(item)
             session.commit()
+            logger.info("Transcript job completed for item %s", item_id)
         except Exception as exc:  # pragma: no cover - background logging
+            logger.exception("Transcript job failed for item %s", item_id)
             item.status = ItemStatus.FAILED
             item.error = str(exc)
             session.add(item)
@@ -289,6 +413,7 @@ def run_summary_job(item_id: int, settings: Settings) -> None:
         if not item:
             return
         try:
+            logger.info("Starting summary job for item %s", item_id)
             transcript_file = transcript_path(item.id, settings)
             if not transcript_file.exists():
                 raise FileNotFoundError("Transcript file missing")
@@ -313,7 +438,9 @@ def run_summary_job(item_id: int, settings: Settings) -> None:
             item.error = None
             session.add(item)
             session.commit()
+            logger.info("Summary job completed for item %s", item_id)
         except Exception as exc:  # pragma: no cover - background logging
+            logger.exception("Summary job failed for item %s", item_id)
             item.status = ItemStatus.FAILED
             item.error = str(exc)
             session.add(item)

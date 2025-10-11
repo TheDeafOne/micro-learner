@@ -33,6 +33,13 @@ class CanvasClient:
             f"/api/v1/courses/{course_id}/modules/{module_id}/items?per_page=100"
         )
 
+    async def fetch_page_body(self, course_id: int, page_url: str) -> str:
+        response = await self._client.get(f"/api/v1/courses/{course_id}/pages/{page_url}")
+        response.raise_for_status()
+        data = response.json()
+        body = data.get("body") or ""
+        return body
+
     async def _paginate(self, path: str) -> list[dict[str, Any]]:
         results: list[dict[str, Any]] = []
         next_url: Optional[str] = path

@@ -9,6 +9,11 @@ from sqlmodel import Field, SQLModel
 from .models import ItemStatus
 
 
+class MediaLink(BaseModel):
+    provider: str
+    url: str
+
+
 class CourseRead(SQLModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -57,6 +62,7 @@ class ItemDetail(ItemRead):
     transcript_path: Optional[str] = None
     summary_path: Optional[str] = None
     artifacts: list[ArtifactRead] = Field(default_factory=list)
+    media_links: list[MediaLink] = Field(default_factory=list)
 
 
 class RefreshResult(BaseModel):

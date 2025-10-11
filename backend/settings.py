@@ -16,15 +16,37 @@ class Settings(BaseModel):
     openai_base_url: Optional[str] = Field(default=None, alias="OPENAI_BASE_URL")
     data_dir: Path = Field(default=Path("./data"), alias="DATA_DIR")
     database_url: str = Field(default="sqlite:///./backend.db", alias="DATABASE_URL")
+    playwright_browser_channel: str = Field(
+        default="chromium",
+        alias="PLAYWRIGHT_BROWSER_CHANNEL",
+    )
+    playwright_user_data_dir: Path = Field(
+        default=Path("edge-profile"),
+        alias="PLAYWRIGHT_USER_DATA_DIR",
+    )
+    playwright_headless: bool = Field(
+        default=False,
+        alias="PLAYWRIGHT_HEADLESS",
+    )
 
     def model_post_init(self, __context):
         self.data_dir = self.data_dir.resolve()
+        self.playwright_user_data_dir = self.playwright_user_data_dir.resolve()
+        self.apply_playwright_env()
 
     def transcripts_dir(self) -> Path:
         return self.data_dir / "transcripts"
 
     def summaries_dir(self) -> Path:
         return self.data_dir / "summaries"
+
+    def apply_playwright_env(self) -> None:
+        os.environ.setdefault("PLAYWRIGHT_BROWSER_CHANNEL", self.playwright_browser_channel)
+        os.environ.setdefault("PLAYWRIGHT_USER_DATA_DIR", str(self.playwright_user_data_dir))
+        os.environ.setdefault(
+            "PLAYWRIGHT_HEADLESS",
+            "true" if self.playwright_headless else "false",
+        )
 
 
 def get_settings() -> Settings:
