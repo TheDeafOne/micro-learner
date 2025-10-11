@@ -4,38 +4,64 @@ from __future__ import annotations
 import os
 import re
 import sys
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
+DEFAULT_PROFILE_DIR = Path("/home/woodbkb2/git/micro-learner/backend/edge-profile")  # <-- match the working path
+DEFAULT_STATE_FILE = Path("playwright-state.json")  # unused for persistent
 
-DEFAULT_PROFILE_DIR = Path("edge-profile")  # persists cookies/session across runs
-
-
-def _playwright_config() -> Tuple[str, Path, bool]:
-    channel = os.getenv("PLAYWRIGHT_BROWSER_CHANNEL", "msedge").strip()
+def _playwright_config() -> tuple[str|None, Path, bool, Path|None]:
+    # no channel needed for persistent
+    channel = None
     profile_dir = Path(os.getenv("PLAYWRIGHT_USER_DATA_DIR", DEFAULT_PROFILE_DIR.as_posix()))
-    headless = os.getenv("PLAYWRIGHT_HEADLESS", "false").lower() in {"1", "true", "yes"}
-    return channel, profile_dir, headless
-
+    # force headed while debugging (ignore env); flip to True later if needed
+    headless = False
+    storage_state = None
+    return channel, profile_dir, headless, storage_state
 
 def _launch_context(pw):
-    channel, profile_dir, headless = _playwright_config()
-    kwargs = {
-        "user_data_dir": str(profile_dir),
-        "headless": headless,
-    }
-    if channel:
-        kwargs["channel"] = channel
-    try:
-        return pw.chromium.launch_persistent_context(**kwargs)
-    except Exception:
-        if channel and channel.lower() != "chromium":
-            kwargs.pop("channel", None)
-            return pw.chromium.launch_persistent_context(**kwargs)
-        raise
+    """
+    Launch the SAME persistent profile you used manually.
+    """
+    _channel, profile_dir, headless, _ = _playwright_config()
+
+    profile_name = "Default"
+    profile_dir.mkdir(parents=True, exist_ok=True)
+
+    launch_args = [
+        "--no-sandbox",
+        f"--profile-directory={profile_name}",
+        "--disable-gpu" if headless else "",
+    ]
+    launch_args = [a for a in launch_args if a]  # drop blanks
+
+    ctx = pw.chromium.launch_persistent_context(
+        user_data_dir=str(profile_dir),   # <-- absolute /backend/edge-profile
+        headless=headless,                # <-- headed for now
+        args=launch_args,
+        # if you’re behind a corp proxy, uncomment and set it:
+        # proxy={"server": "http://PROXY_HOST:PROXY_PORT"},
+    )
+    return ManagedContext(ctx)
+
+@dataclass
+class ManagedContext:
+    context: Any
+    browser: Any | None = None
+
+    def __getattr__(self, item):
+        return getattr(self.context, item)
+
+    def close(self) -> None:
+        try:
+            self.context.close()
+        finally:
+            if self.browser:
+                self.browser.close()
 
 
 def _extract_captions_from_html(html: str) -> str | None:

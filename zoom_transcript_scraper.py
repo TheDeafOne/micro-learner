@@ -3,35 +3,82 @@ from __future__ import annotations
 
 import os
 import sys
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 
 from playwright.sync_api import sync_playwright
 
 DEFAULT_PROFILE_DIR = Path("edge-profile")  # persists cookies/session across runs
+DEFAULT_STATE_FILE = Path("playwright-state.json")
 
 
-def _playwright_config() -> Tuple[str, Path, bool]:
-    channel = os.getenv("PLAYWRIGHT_BROWSER_CHANNEL", "msedge").strip()
+def _playwright_config() -> Tuple[str, Path, bool, Path | None]:
+    channel = os.getenv("PLAYWRIGHT_BROWSER_CHANNEL", "chromium").strip()
     profile_dir = Path(os.getenv("PLAYWRIGHT_USER_DATA_DIR", DEFAULT_PROFILE_DIR.as_posix()))
     headless = os.getenv("PLAYWRIGHT_HEADLESS", "false").lower() in {"1", "true", "yes"}
-    return channel, profile_dir, headless
+    storage_state_env = os.getenv("PLAYWRIGHT_STORAGE_STATE")
+    storage_state = (
+        Path(storage_state_env).expanduser().resolve()
+        if storage_state_env
+        else DEFAULT_STATE_FILE.resolve()
+    )
+    if storage_state_env is None and not storage_state.exists():
+        storage_state = None
+    elif storage_state and not storage_state.exists():
+        storage_state = None
+    return channel, profile_dir, headless, storage_state
+
+
+@dataclass
+class ManagedContext:
+    context: Any
+    browser: Any | None = None
+
+    def __getattr__(self, item):
+        return getattr(self.context, item)
+
+    def close(self) -> None:
+        try:
+            self.context.close()
+        finally:
+            if self.browser:
+                self.browser.close()
 
 
 def _launch_context(pw):
-    channel, profile_dir, headless = _playwright_config()
+    channel, profile_dir, headless, storage_state = _playwright_config()
+    launch_args = ["--no-sandbox"]
+    if headless:
+        launch_args.append("--disable-gpu")
+
+    if storage_state and storage_state.exists():
+        browser = pw.chromium.launch(
+        user_data_dir="/home/woodbkb2/git/micro-learner/backend/edge-profile",
+        headless=False,   # keep headed while debugging
+        args=[
+            "--profile-directory=Default",  # <-- key part
+            "--no-sandbox",
+            "--disable-gpu"
+        ],
+    )
+        context = browser.new_context(storage_state=str(storage_state))
+        return ManagedContext(context, browser)
+
+    profile_dir.mkdir(parents=True, exist_ok=True)
     kwargs = {
         "user_data_dir": str(profile_dir),
         "headless": headless,
+        "args": launch_args,
     }
     if channel:
         kwargs["channel"] = channel
     try:
-        return pw.chromium.launch_persistent_context(**kwargs)
+        return ManagedContext(pw.chromium.launch_persistent_context(**kwargs))
     except Exception:
         if channel and channel.lower() != "chromium":
             kwargs.pop("channel", None)
-            return pw.chromium.launch_persistent_context(**kwargs)
+            return ManagedContext(pw.chromium.launch_persistent_context(**kwargs))
         raise
 
 

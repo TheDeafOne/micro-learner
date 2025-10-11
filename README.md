@@ -40,6 +40,7 @@ Set the following variables in `.env`:
 - `PLAYWRIGHT_BROWSER_CHANNEL` – browser channel for Playwright (`chromium`, `msedge`, etc.)
 - `PLAYWRIGHT_USER_DATA_DIR` – path to reuse browser profile (default `edge-profile`)
 - `PLAYWRIGHT_HEADLESS` – `true` to run Playwright headless, otherwise `false`
+- `PLAYWRIGHT_STORAGE_STATE` – optional path to a Playwright `state.json` with pre-authenticated cookies
 
 The app auto-creates database tables and ensures transcript/summary directories exist under `DATA_DIR`.
 
@@ -74,6 +75,7 @@ uv run uvicorn backend.main:app --reload
 
    The job writes `data/transcripts/{item_id}.txt`, stores/updates an artifact record, and moves the item status to `TRANSCRIPT_READY`.
    For Canvas Pages, the task fetches the page body, extracts every Panopto/Zoom link (mirroring `extract_links` from `canvas_navigator.py`), transcribes them all, and concatenates the transcripts into a single artifact.
+   When `PLAYWRIGHT_STORAGE_STATE` points to a valid Microsoft SSO/Zoom state file, the providers run headlessly without launching a visible browser.
 7. **Summarize** – `POST /items/{id}/summarize`  
    Requires an existing transcript. Writes `data/summaries/{item_id}.md`, creates/updates the summary artifact, and sets status to `SUMMARY_READY`.
 8. **Inspect status** – `GET /items/{id}`  

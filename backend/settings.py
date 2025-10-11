@@ -28,10 +28,16 @@ class Settings(BaseModel):
         default=False,
         alias="PLAYWRIGHT_HEADLESS",
     )
+    playwright_storage_state: Optional[Path] = Field(
+        default=None,
+        alias="PLAYWRIGHT_STORAGE_STATE",
+    )
 
     def model_post_init(self, __context):
         self.data_dir = self.data_dir.resolve()
         self.playwright_user_data_dir = self.playwright_user_data_dir.resolve()
+        if self.playwright_storage_state:
+            self.playwright_storage_state = Path(self.playwright_storage_state).resolve()
         self.apply_playwright_env()
 
     def transcripts_dir(self) -> Path:
@@ -47,6 +53,8 @@ class Settings(BaseModel):
             "PLAYWRIGHT_HEADLESS",
             "true" if self.playwright_headless else "false",
         )
+        if self.playwright_storage_state:
+            os.environ.setdefault("PLAYWRIGHT_STORAGE_STATE", str(self.playwright_storage_state))
 
 
 def get_settings() -> Settings:
