@@ -15,7 +15,7 @@ from sqlmodel import Session, select
 from backend.canvas_client import CanvasClient
 from backend.deps import get_engine, get_session, init_db
 from backend.models import Artifact, Course, Item, ItemStatus, Module
-from backend.providers import infer_provider_from_url, resolve_provider
+from backend.providers import infer_provider_from_url, normalize_provider_url, resolve_provider
 from backend.schemas import (
     ArtifactRead,
     CourseRead,
@@ -146,11 +146,12 @@ async def refresh_modules(
                 item_type = item_payload.get("type")
                 html_url = item_payload.get("html_url") or item_payload.get("url")
                 provider = infer_provider_from_url(html_url)
+                normalized_url = normalize_provider_url(provider, html_url)
 
                 if item:
                     item.title = title
                     item.type = item_type
-                    item.canvas_url = html_url
+                    item.canvas_url = normalized_url or html_url
                     item.provider = provider or item.provider
                     item.last_synced_at = now
                 else:
@@ -159,7 +160,7 @@ async def refresh_modules(
                         module_id=module_id,
                         title=title,
                         type=item_type,
-                        canvas_url=html_url,
+                        canvas_url=normalized_url or html_url,
                         provider=provider,
                         status=ItemStatus.DISCOVERED,
                         last_synced_at=now,

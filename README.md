@@ -1,12 +1,14 @@
 # Canvas Summarization Backend
 
-FastAPI + SQLite backend that syncs Canvas course structure and produces local transcript and summary files for module items. The service uses fake providers by default so you can run the workflow end-to-end without external dependencies.
+FastAPI + SQLite backend that syncs Canvas course structure and produces local transcript and summary files for module items. Zoom and Panopto videos are transcribed via Playwright-driven scrapers so you can reuse the browser automation workflow from the CLI scripts. A mock provider is still available for other sources.
 
 ## Prerequisites
 
 - Python 3.12+
 - [uv](https://github.com/astral-sh/uv) (recommended) or another PEP 517 compatible installer
 - Canvas Personal Access Token with permission to read your courses and modules
+- Microsoft Edge (Chromium) with a profile that can access your Panopto/Zoom content
+- Playwright browsers installed (`uv run playwright install` once after syncing)
 
 ## Installation
 
@@ -14,7 +16,11 @@ FastAPI + SQLite backend that syncs Canvas course structure and produces local t
 uv sync
 ```
 
-This installs dependencies defined in `pyproject.toml` into the local virtualenv created by `uv`.
+This installs dependencies defined in `pyproject.toml` into the local virtualenv created by `uv`. After syncing, install Playwright browser binaries:
+
+```bash
+uv run playwright install
+```
 
 ## Configuration
 
@@ -58,7 +64,12 @@ uv run uvicorn backend.main:app --reload
    Fetches modules and their items, inferring providers from URLs.
 5. **Browse data** – `GET /courses/{id}`, `GET /courses/{id}/modules`, `GET /modules/{id}/items`
 6. **Fetch transcript** – `POST /items/{id}/fetch-transcript`  
-   Queues a background job that writes `data/transcripts/{item_id}.txt`, stores/updates an artifact record, and moves the item status to `TRANSCRIPT_READY`.
+   Queues a background job that launches the appropriate provider:
+   - Panopto → `panopto_transcript_scraper.get_transcript_text` (Edge profile, waits for SSO)
+   - Zoom → `zoom_transcript_scraper.get_transcript_text`
+   - Other → fake provider that returns placeholder text
+
+   The job writes `data/transcripts/{item_id}.txt`, stores/updates an artifact record, and moves the item status to `TRANSCRIPT_READY`.
 7. **Summarize** – `POST /items/{id}/summarize`  
    Requires an existing transcript. Writes `data/summaries/{item_id}.md`, creates/updates the summary artifact, and sets status to `SUMMARY_READY`.
 8. **Inspect status** – `GET /items/{id}`  
@@ -71,9 +82,10 @@ Background tasks run inside the FastAPI process using `BackgroundTasks`, so the 
 - SQLite database: `backend.db` (configurable via `DATABASE_URL`)
 - Transcripts: `data/transcripts/{item_id}.txt`
 - Summaries: `data/summaries/{item_id}.md`
+- Edge profile directory reused by Playwright: `edge-profile/` (created automatically when scrapers run)
 
 ## Development Notes
 
 - `python3 -m compileall backend` ensures syntax validity.
-- Add real transcript providers or OpenAI summarization by implementing the stubs in `backend/providers.py` and `backend/summarizer.py`.
+- The Panopto and Zoom providers reuse the CLI scrapers (`panopto_transcript_scraper.py`, `zoom_transcript_scraper.py`) so any improvements there automatically flow into the API.
 - The API docs are available at `http://127.0.0.1:8000/docs`.

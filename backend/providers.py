@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Protocol
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 from .models import Item
 
@@ -22,6 +23,41 @@ class FakeTranscriptProvider:
         )
 
 
+class PanoptoTranscriptProvider:
+    name = "panopto"
+
+    def fetch(self, item: Item) -> str:
+        if not item.canvas_url:
+            raise ValueError("Panopto item is missing a URL")
+        try:
+            from panopto_transcript_scraper import get_transcript_text
+        except ImportError as exc:  # pragma: no cover - requires optional dependency
+            raise RuntimeError("panopto_transcript_scraper module not available") from exc
+
+        url = normalize_provider_url("panopto", item.canvas_url)
+        transcript = get_transcript_text(url)
+        if not transcript:
+            raise RuntimeError("Panopto transcript could not be retrieved")
+        return transcript
+
+
+class ZoomTranscriptProvider:
+    name = "zoom"
+
+    def fetch(self, item: Item) -> str:
+        if not item.canvas_url:
+            raise ValueError("Zoom item is missing a URL")
+        try:
+            from zoom_transcript_scraper import get_transcript_text
+        except ImportError as exc:  # pragma: no cover - requires optional dependency
+            raise RuntimeError("zoom_transcript_scraper module not available") from exc
+
+        transcript = get_transcript_text(item.canvas_url)
+        if not transcript:
+            raise RuntimeError("Zoom transcript could not be retrieved")
+        return transcript
+
+
 def infer_provider_from_url(url: str | None) -> str | None:
     if not url:
         return None
@@ -33,5 +69,48 @@ def infer_provider_from_url(url: str | None) -> str | None:
     return None
 
 
+def normalize_provider_url(provider: str | None, url: str | None) -> str | None:
+    if not url or not provider:
+        return url
+    provider = provider.lower()
+    if provider == "panopto":
+        try:
+            parsed = urlparse(url)
+            if "panopto.com" not in parsed.netloc.lower():
+                return url
+            query = parse_qs(parsed.query)
+            pid = (query.get("id") or [None])[0]
+            if "Viewer.aspx" in parsed.path and pid:
+                return urlunparse(
+                    (
+                        parsed.scheme,
+                        parsed.netloc,
+                        "/Panopto/Pages/Viewer.aspx",
+                        "",
+                        urlencode({"id": pid}),
+                        "",
+                    )
+                )
+            if "Embed.aspx" in parsed.path:
+                return urlunparse(
+                    (
+                        parsed.scheme,
+                        parsed.netloc,
+                        "/Panopto/Pages/Viewer.aspx",
+                        "",
+                        urlencode({"id": pid}) if pid else parsed.query,
+                        "",
+                    )
+                )
+        except Exception:
+            return url
+    return url
+
+
 def resolve_provider(item: Item) -> TranscriptProvider:
+    provider = (item.provider or "").lower()
+    if provider == "panopto":
+        return PanoptoTranscriptProvider()
+    if provider == "zoom":
+        return ZoomTranscriptProvider()
     return FakeTranscriptProvider(name=item.provider or "fake")
