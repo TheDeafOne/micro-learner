@@ -41,6 +41,7 @@ Set the following variables in `.env`:
 - `PLAYWRIGHT_USER_DATA_DIR` – path to reuse a persistent browser profile (`edge-profile` by default)
 - `PLAYWRIGHT_HEADLESS` – `true` to run Playwright headless (recommended for servers)
 - `PLAYWRIGHT_STORAGE_STATE` – optional path to a Playwright `state.json` with cached SSO cookies
+- `CORS_ORIGINS` – comma-separated list of allowed frontend origins (defaults to local Vite dev hosts)
 
 ### Capture SSO Cookies (recommended)
 

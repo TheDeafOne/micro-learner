@@ -6,7 +6,14 @@ from pathlib import Path
 from typing import Optional
 
 from dotenv import dotenv_values, find_dotenv
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+
+
+def _default_cors_origins() -> list[str]:
+    return [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
 
 
 class Settings(BaseModel):
@@ -32,6 +39,18 @@ class Settings(BaseModel):
         default=None,
         alias="PLAYWRIGHT_STORAGE_STATE",
     )
+    cors_origins: list[str] = Field(default_factory=_default_cors_origins, alias="CORS_ORIGINS")
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_cors_origins(cls, data: dict | None) -> dict | None:
+        if not data:
+            return data
+        raw = data.get("CORS_ORIGINS") or data.get("cors_origins")
+        if isinstance(raw, str):
+            items = [item.strip() for item in raw.split(",") if item.strip()]
+            data["cors_origins"] = items
+        return data
 
     def model_post_init(self, __context):
         self.data_dir = self.data_dir.resolve()

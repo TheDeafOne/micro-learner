@@ -16,6 +16,7 @@ from typing import Optional
 
 import httpx
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from sqlalchemy import func
 from sqlmodel import Session, select
@@ -46,12 +47,22 @@ from backend.summarizer import summarize_transcript
 logger = logging.getLogger(__name__)
 
 
+settings = get_settings()
 app = FastAPI(title="Canvas Summarization Backend")
+origins = settings.cors_origins or ["*"]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+app.state.cors_configured = True
 
 
 @app.on_event("startup")
 def on_startup() -> None:
-    settings = get_settings()
     init_db()
     ensure_data_dirs(settings)
     if not logging.getLogger().handlers:
