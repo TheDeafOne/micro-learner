@@ -1,3 +1,4 @@
 edge-profile/
 auth/
 playwright-state.json
+__pycache__
