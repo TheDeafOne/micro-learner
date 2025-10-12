@@ -42,8 +42,20 @@ export function listModules(courseId: number): Promise<Module[]> {
   return request(`/courses/${courseId}/modules`);
 }
 
-export function refreshModules(courseId: number): Promise<RefreshResult> {
-  return request(`/courses/${courseId}/modules/refresh`, { method: "POST" });
+export function refreshModules(
+  courseId: number,
+  options?: { includeItems?: boolean },
+): Promise<RefreshResult> {
+  const params = new URLSearchParams();
+  if (options?.includeItems === false) {
+    params.set("include_items", "false");
+  }
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+  return request(`/courses/${courseId}/modules/refresh${suffix}`, { method: "POST" });
+}
+
+export function refreshModuleItems(moduleId: number): Promise<RefreshResult> {
+  return request(`/modules/${moduleId}/items/refresh`, { method: "POST" });
 }
 
 export interface ItemFilters {

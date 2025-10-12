@@ -92,10 +92,11 @@ See `frontend/README.md` for a full walkthrough, available scripts, and deployme
 2. **Sync courses** – `POST /me/courses/refresh`  
    Populates the `course` table from Canvas.
 3. **List courses** – `GET /me/courses`
-4. **Sync modules + items** – `POST /courses/{course_id}/modules/refresh`  
-   Fetches modules and their items, inferring providers from URLs.
-5. **Browse data** – `GET /courses` / `GET /courses/{id}`, `GET /courses/{id}/modules`, `GET /modules/{id}`, `GET /modules/{id}/items`, `GET /items?module_id=…&status=…`
-6. **Fetch transcript** – `POST /items/{id}/fetch-transcript`  
+4. **Sync modules** – `POST /courses/{course_id}/modules/refresh` (pass `?include_items=false` to skip item crawling when you just need module metadata)  
+   Fetches modules and, by default, their items while inferring providers from URLs.
+5. **Sync a module's items** – `POST /modules/{module_id}/items/refresh` to pull items lazily for an individual module.
+6. **Browse data** – `GET /courses` / `GET /courses/{id}`, `GET /courses/{id}/modules`, `GET /modules/{id}`, `GET /modules/{id}/items`, `GET /items?module_id=…&status=…`
+7. **Fetch transcript** – `POST /items/{id}/fetch-transcript`  
    Queues a background job that launches the appropriate provider:
    - Panopto → `panopto_transcript_scraper.get_transcripts`
    - Zoom → `zoom_transcript_scraper.get_transcripts`
@@ -104,12 +105,12 @@ See `frontend/README.md` for a full walkthrough, available scripts, and deployme
    The job writes `data/transcripts/{item_id}.txt`, stores/updates an artifact record, and moves the item status to `TRANSCRIPT_READY`.
    For Canvas Pages, the task fetches the page body, extracts every Panopto/Zoom link (mirroring `extract_links` from `canvas_navigator.py`), transcribes them all, and concatenates the transcripts into a single artifact.
    When `PLAYWRIGHT_STORAGE_STATE` points to a valid Microsoft SSO/Zoom state file, the providers run headlessly without launching a visible browser.
-7. **Summarize** – `POST /items/{id}/summarize`  
+8. **Summarize** – `POST /items/{id}/summarize`  
    Requires an existing transcript. Writes `data/summaries/{item_id}.md`, creates/updates the summary artifact, and sets status to `SUMMARY_READY`.
-8. **Inspect status** – `GET /items/{id}`  
+9. **Inspect status** – `GET /items/{id}`  
    Returns item metadata, detected media links, and paths to the generated artifacts.
-9. **Download artifacts** – `GET /items/{id}/transcript/file` (text), `GET /items/{id}/summary/file` (markdown), or list all with `GET /items/{id}/artifacts`.
-10. **Reset an item** – `POST /items/{id}/reset?delete_artifacts=true` clears status/errors (and optionally deletes artifacts) so you can re-run the pipeline.
+10. **Download artifacts** – `GET /items/{id}/transcript/file` (text), `GET /items/{id}/summary/file` (markdown), or list all with `GET /items/{id}/artifacts`.
+11. **Reset an item** – `POST /items/{id}/reset?delete_artifacts=true` clears status/errors (and optionally deletes artifacts) so you can re-run the pipeline.
 
 Background tasks run inside the FastAPI process using `BackgroundTasks`, so the responses return immediately while work continues asynchronously.
 

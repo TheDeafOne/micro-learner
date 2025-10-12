@@ -10,6 +10,7 @@ import {
   queueSummary,
   queueTranscript,
   refreshCourses,
+  refreshModuleItems,
   refreshModules,
 } from "@/lib/api";
 import type { Course, Item, ItemDetail, ItemStatus, Module } from "@/types";
@@ -100,9 +101,9 @@ export function useDashboardData(): DashboardState {
   const [actionBusy, setActionBusy] = useState<DashboardAction>(null);
 
   const filtersRef = useRef(filters);
-  const selectedCourseIdRef = useRef<number | null>(selectedCourseId);
   const selectedModuleIdRef = useRef<number | null>(selectedModuleId);
   const selectedItemIdRef = useRef<number | null>(selectedItemId);
+  const lastModuleSyncedRef = useRef<number | null>(null);
 
   useEffect(() => {
     const loadHealth = async () => {
@@ -126,12 +127,9 @@ export function useDashboardData(): DashboardState {
     try {
       const data = await listCourses();
       setCourses(data);
-      setSelectedCourseId((previous) => {
-        if (previous && data.some((course) => course.id === previous)) {
-          return previous;
-        }
-        return data.length ? data[0].id : null;
-      });
+      setSelectedCourseId((previous) =>
+        previous && data.some((course) => course.id === previous) ? previous : null,
+      );
     } catch (error) {
       setCoursesError(error instanceof Error ? error.message : "Failed to load courses.");
       setCourses([]);
@@ -159,12 +157,7 @@ export function useDashboardData(): DashboardState {
         const data = await listModules(courseId);
         setModules(data);
         setSelectedModuleId((previous) => {
-          const next =
-            previous && data.some((module) => module.id === previous)
-              ? previous
-              : data.length
-                ? data[0].id
-                : null;
+          const next = previous && data.some((module) => module.id === previous) ? previous : null;
           nextModuleId = next;
           return next;
         });
@@ -181,17 +174,37 @@ export function useDashboardData(): DashboardState {
     [],
   );
 
-  useEffect(() => {
-    void loadModules(selectedCourseId);
-  }, [selectedCourseId, loadModules]);
+  const syncModules = useCallback(
+    async (
+      courseId: number,
+      options: { includeItems?: boolean; showToast?: boolean } = {},
+    ) => {
+      let errorMessage: string | null = null;
+      setRefreshingModules(true);
+      try {
+        await refreshModules(courseId, { includeItems: options.includeItems ?? true });
+        if (options.showToast) {
+          setActionMessage({ type: "success", text: "Modules refreshed." });
+        }
+      } catch (error) {
+        errorMessage = error instanceof Error ? error.message : "Failed to refresh modules.";
+        if (options.showToast) {
+          setActionMessage({ type: "error", text: errorMessage });
+        }
+      } finally {
+        setRefreshingModules(false);
+        await loadModules(courseId);
+        if (!options.showToast && errorMessage) {
+          setModulesError(errorMessage);
+        }
+      }
+    },
+    [loadModules, refreshModules],
+  );
 
   const loadItems = useCallback(
-    async (
-      moduleId: number | null,
-      courseId: number | null,
-      nextFilters: DashboardFilters,
-    ) => {
-      if (!moduleId && !courseId) {
+    async (moduleId: number | null, nextFilters: DashboardFilters) => {
+      if (!moduleId) {
         setItems([]);
         setSelectedItemId(null);
         return;
@@ -201,7 +214,6 @@ export function useDashboardData(): DashboardState {
       try {
         const data = await listItems({
           moduleId: moduleId ?? undefined,
-          courseId: moduleId ? undefined : courseId ?? undefined,
           status: nextFilters.status.length ? nextFilters.status : undefined,
           provider: nextFilters.provider || undefined,
           search: nextFilters.search || undefined,
@@ -224,9 +236,35 @@ export function useDashboardData(): DashboardState {
     [],
   );
 
-  useEffect(() => {
-    void loadItems(selectedModuleId, selectedCourseId, filters);
-  }, [selectedModuleId, selectedCourseId, filters, loadItems]);
+  const syncItemsForModule = useCallback(
+    async (
+      moduleId: number,
+      nextFilters: DashboardFilters,
+      options: { showToast?: boolean; forceRefresh?: boolean } = {},
+    ) => {
+      let errorMessage: string | null = null;
+      if (options.forceRefresh || lastModuleSyncedRef.current !== moduleId) {
+        try {
+          await refreshModuleItems(moduleId);
+          lastModuleSyncedRef.current = moduleId;
+          if (options.showToast) {
+            setActionMessage({ type: "success", text: "Items refreshed." });
+          }
+        } catch (error) {
+          errorMessage =
+            error instanceof Error ? error.message : "Failed to refresh module items.";
+          if (options.showToast) {
+            setActionMessage({ type: "error", text: errorMessage });
+          }
+        }
+      }
+      await loadItems(moduleId, nextFilters);
+      if (!options.showToast && errorMessage) {
+        setItemsError(errorMessage);
+      }
+    },
+    [loadItems, refreshModuleItems],
+  );
 
   const loadItemDetail = useCallback(async (itemId: number | null) => {
     if (!itemId) {
@@ -263,10 +301,6 @@ export function useDashboardData(): DashboardState {
   useEffect(() => {
     filtersRef.current = filters;
   }, [filters]);
-
-  useEffect(() => {
-    selectedCourseIdRef.current = selectedCourseId;
-  }, [selectedCourseId]);
 
   useEffect(() => {
     selectedModuleIdRef.current = selectedModuleId;
@@ -306,21 +340,14 @@ export function useDashboardData(): DashboardState {
     if (!selectedCourseId) {
       return;
     }
-    setRefreshingModules(true);
-    try {
-      await refreshModules(selectedCourseId);
-      const nextModuleId = await loadModules(selectedCourseId);
-      await loadItems(nextModuleId, selectedCourseId, filters);
-      setActionMessage({ type: "success", text: "Modules refreshed." });
-    } catch (error) {
-      setActionMessage({
-        type: "error",
-        text: error instanceof Error ? error.message : "Failed to refresh modules.",
+    await syncModules(selectedCourseId, { includeItems: false, showToast: true });
+    const currentModuleId = selectedModuleIdRef.current;
+    if (currentModuleId) {
+      await syncItemsForModule(currentModuleId, filtersRef.current, {
+        forceRefresh: true,
       });
-    } finally {
-      setRefreshingModules(false);
     }
-  }, [filters, loadItems, loadModules, selectedCourseId]);
+  }, [selectedCourseId, syncModules, syncItemsForModule]);
 
   const handleQueueTranscript = useCallback(async () => {
     if (!selectedItemId) {
@@ -329,7 +356,9 @@ export function useDashboardData(): DashboardState {
     setActionBusy("transcript");
     try {
       await queueTranscript(selectedItemId);
-      await loadItems(selectedModuleId, selectedCourseId, filters);
+      if (selectedModuleId) {
+        await loadItems(selectedModuleId, filters);
+      }
       await loadItemDetail(selectedItemId);
       setActionMessage({ type: "success", text: "Transcript job queued." });
     } catch (error) {
@@ -340,14 +369,7 @@ export function useDashboardData(): DashboardState {
     } finally {
       setActionBusy((current) => (current === "transcript" ? null : current));
     }
-  }, [
-    filters,
-    loadItemDetail,
-    loadItems,
-    selectedCourseId,
-    selectedItemId,
-    selectedModuleId,
-  ]);
+  }, [filters, loadItemDetail, loadItems, selectedItemId, selectedModuleId]);
 
   const handleQueueSummary = useCallback(async () => {
     if (!selectedItemId) {
@@ -356,7 +378,9 @@ export function useDashboardData(): DashboardState {
     setActionBusy("summary");
     try {
       await queueSummary(selectedItemId);
-      await loadItems(selectedModuleId, selectedCourseId, filters);
+      if (selectedModuleId) {
+        await loadItems(selectedModuleId, filters);
+      }
       await loadItemDetail(selectedItemId);
       setActionMessage({ type: "success", text: "Summary job queued." });
     } catch (error) {
@@ -367,14 +391,7 @@ export function useDashboardData(): DashboardState {
     } finally {
       setActionBusy((current) => (current === "summary" ? null : current));
     }
-  }, [
-    filters,
-    loadItemDetail,
-    loadItems,
-    selectedCourseId,
-    selectedItemId,
-    selectedModuleId,
-  ]);
+  }, [filters, loadItemDetail, loadItems, selectedItemId, selectedModuleId]);
 
   const handleSelectCourse = useCallback((courseId: number) => {
     setSelectedCourseId(courseId);
@@ -458,8 +475,7 @@ export function useDashboardData(): DashboardState {
           const payload = JSON.parse(event.data);
           if (payload?.type === "item.update" && payload?.item?.id) {
             const currentModuleId = selectedModuleIdRef.current;
-            const currentCourseId = selectedCourseIdRef.current;
-            void loadItems(currentModuleId, currentCourseId, filtersRef.current);
+            void loadItems(currentModuleId, filtersRef.current);
             if (selectedItemIdRef.current === payload.item.id) {
               void loadItemDetail(payload.item.id);
             }
@@ -503,6 +519,30 @@ export function useDashboardData(): DashboardState {
       }
     };
   }, [websocketUrl, loadItems, loadItemDetail]);
+
+  useEffect(() => {
+    const courseId = selectedCourseId;
+    if (!courseId) {
+      setModules([]);
+      setSelectedModuleId(null);
+      lastModuleSyncedRef.current = null;
+      return;
+    }
+    void syncModules(courseId, { includeItems: false });
+  }, [selectedCourseId, syncModules]);
+  useEffect(() => {
+    const moduleId = selectedModuleId;
+    if (!moduleId) {
+      setItems([]);
+      setSelectedItemId(null);
+      lastModuleSyncedRef.current = null;
+      return;
+    }
+    void syncItemsForModule(moduleId, filters, {
+      forceRefresh: lastModuleSyncedRef.current !== moduleId,
+    });
+  }, [selectedModuleId, filters, syncItemsForModule]);
+
 
   return {
     apiBaseUrl: API_BASE_URL,

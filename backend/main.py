@@ -156,6 +156,69 @@ def format_transcript_bundle(sections: list[tuple[str, str, str]]) -> str:
     return "\n".join(lines).strip()
 
 
+async def sync_module_items(
+    session: Session,
+    client: CanvasClient,
+    module: Module,
+    now: datetime,
+) -> int:
+    module_id = module.id
+    items_payload = await client.fetch_module_items(module.course_id, module_id)
+    updated = 0
+    for item_payload in items_payload:
+        item_id = item_payload.get("id")
+        if item_id is None:
+            continue
+        item = session.get(Item, item_id)
+        title = item_payload.get("title") or item_payload.get("name") or f"Item {item_id}"
+        item_type = item_payload.get("type")
+        html_url = item_payload.get("html_url") or item_payload.get("url")
+        provider = infer_provider_from_url(html_url)
+        page_url_slug = item_payload.get("page_url")
+        media_entries: list[dict[str, str]] = []
+
+        if item_type == "Page" and page_url_slug:
+            try:
+                page_body = await client.fetch_page_body(module.course_id, page_url_slug)
+            except Exception:
+                page_body = ""
+            media_entries = extract_media_entries(page_body)
+            if media_entries and not provider:
+                provider = media_entries[0]["provider"]
+        elif provider:
+            normalized_url = normalize_provider_url(provider, html_url)
+            target_url = normalized_url or html_url
+            if target_url:
+                media_entries.append({"provider": provider, "url": target_url})
+
+        media_json = json.dumps(media_entries) if media_entries else None
+
+        if item:
+            item.title = title
+            item.type = item_type
+            item.page_url = page_url_slug
+            item.canvas_url = html_url
+            item.provider = provider
+            item.media_urls = media_json
+            item.last_synced_at = now
+        else:
+            item = Item(
+                id=item_id,
+                module_id=module_id,
+                title=title,
+                type=item_type,
+                page_url=page_url_slug,
+                canvas_url=html_url,
+                provider=provider,
+                status=ItemStatus.DISCOVERED,
+                last_synced_at=now,
+                media_urls=media_json,
+            )
+            session.add(item)
+        updated += 1
+    return updated
+
+
 @app.get("/health")
 async def healthcheck() -> dict[str, str]:
     return {"status": "ok"}
@@ -280,6 +343,7 @@ def list_items_global(
 @app.post("/courses/{course_id}/modules/refresh", response_model=RefreshResult)
 async def refresh_modules(
     course_id: int,
+    include_items: bool = Query(default=True),
     session: Session = Depends(get_session),
     settings: Settings = Depends(get_settings),
 ) -> RefreshResult:
@@ -317,58 +381,8 @@ async def refresh_modules(
                     session.add(module)
                 module_count += 1
 
-                items_payload = await client.fetch_module_items(course_id, module_id)
-                for item_payload in items_payload:
-                    item_id = item_payload.get("id")
-                    if item_id is None:
-                        continue
-                    item = session.get(Item, item_id)
-                    title = item_payload.get("title") or item_payload.get("name") or f"Item {item_id}"
-                    item_type = item_payload.get("type")
-                    html_url = item_payload.get("html_url") or item_payload.get("url")
-                    provider = infer_provider_from_url(html_url)
-                    page_url_slug = item_payload.get("page_url")
-                    media_entries: list[dict[str, str]] = []
-
-                    if item_type == "Page" and page_url_slug:
-                        try:
-                            page_body = await client.fetch_page_body(course_id, page_url_slug)
-                        except Exception:
-                            page_body = ""
-                        media_entries = extract_media_entries(page_body)
-                        if media_entries and not provider:
-                            provider = media_entries[0]["provider"]
-                    elif provider:
-                        normalized_url = normalize_provider_url(provider, html_url)
-                        target_url = normalized_url or html_url
-                        if target_url:
-                            media_entries.append({"provider": provider, "url": target_url})
-
-                    media_json = json.dumps(media_entries) if media_entries else None
-
-                    if item:
-                        item.title = title
-                        item.type = item_type
-                        item.page_url = page_url_slug
-                        item.canvas_url = html_url
-                        item.provider = provider
-                        item.media_urls = media_json
-                        item.last_synced_at = now
-                    else:
-                        item = Item(
-                            id=item_id,
-                            module_id=module_id,
-                            title=title,
-                            type=item_type,
-                            page_url=page_url_slug,
-                            canvas_url=html_url,
-                            provider=provider,
-                            status=ItemStatus.DISCOVERED,
-                            last_synced_at=now,
-                            media_urls=media_json,
-                        )
-                        session.add(item)
-                    item_count += 1
+                if include_items:
+                    item_count += await sync_module_items(session, client, module, now)
     except httpx.HTTPStatusError as exc:
         logger.exception("Canvas API error while syncing modules for course %s", course_id)
         raise HTTPException(
@@ -395,6 +409,34 @@ def list_items(module_id: int, session: Session = Depends(get_session)) -> list[
         raise HTTPException(status_code=404, detail="Module not found")
     statement = select(Item).where(Item.module_id == module_id).order_by(Item.title)
     return session.exec(statement).all()
+
+
+@app.post("/modules/{module_id}/items/refresh", response_model=RefreshResult)
+async def refresh_module_items_endpoint(
+    module_id: int,
+    session: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+) -> RefreshResult:
+    module = session.get(Module, module_id)
+    if not module:
+        raise HTTPException(status_code=404, detail="Module not found")
+    now = datetime.utcnow()
+    try:
+        async with CanvasClient(settings) as client:
+            count = await sync_module_items(session, client, module, now)
+    except httpx.HTTPStatusError as exc:
+        logger.exception("Canvas API error while refreshing items for module %s", module_id)
+        raise HTTPException(
+            status_code=exc.response.status_code,
+            detail=f"Canvas API error while fetching module items: {exc.response.text}",
+        )
+    except httpx.RequestError as exc:
+        logger.exception("Network error while refreshing items for module %s", module_id)
+        raise HTTPException(status_code=502, detail=f"Unable to reach Canvas API: {exc}")
+    module.last_synced_at = now
+    session.add(module)
+    session.commit()
+    return RefreshResult(count=count, detail=f"Items synced: {count}")
 
 
 @app.get("/items/{item_id}/artifacts", response_model=list[ArtifactRead])
