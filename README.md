@@ -71,6 +71,19 @@ The server starts on `http://127.0.0.1:8000`. You can also use standard uvicorn 
 uv run uvicorn backend.main:app --reload
 ```
 
+## Frontend UI
+
+A React + Vite dashboard is available under `frontend/`. It provides course/module browsing, item filters, and controls to queue transcript/summary jobs against this API.
+
+```bash
+cd frontend
+cp .env.example .env            # optional – defaults to http://127.0.0.1:8000
+npm install
+npm run dev
+```
+
+See `frontend/README.md` for a full walkthrough, available scripts, and deployment notes.
+
 ## API Workflow
 
 1. **Health check** – `GET /health`
