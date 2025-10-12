@@ -37,7 +37,7 @@ Set the following variables in `.env`:
 - `OPENAI_API_KEY` – optional; leave blank to use the mock summarizer
 - `DATA_DIR` – where transcript/summary files are written (default `./data`)
 - `DATABASE_URL` – SQLite connection string (default `sqlite:///./backend.db`)
-- `PLAYWRIGHT_BROWSER_CHANNEL` – browser channel for Playwright (`chromium`, `msedge`, etc.)
+- `PLAYWRIGHT_BROWSER_CHANNEL` – browser channel for Playwright (`chrome`, `msedge`, etc.)
 - `PLAYWRIGHT_USER_DATA_DIR` – path to reuse a persistent browser profile (`edge-profile` by default)
 - `PLAYWRIGHT_HEADLESS` – `true` to run Playwright headless (recommended for servers)
 - `PLAYWRIGHT_STORAGE_STATE` – optional path to a Playwright `state.json` with cached SSO cookies
