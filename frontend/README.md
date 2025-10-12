@@ -43,6 +43,7 @@ Defaults to `http://127.0.0.1:8000`.
 - **Course / Module explorer** – refresh Canvas data and drill into modules and items.
 - **Item filters** – search by title, provider, and job status.
 - **Job controls** – queue transcript and summary background tasks per item.
+- **Real-time updates** – websocket connection refreshes statuses as transcripts/summaries finish.
 - **Artifacts** – quick links to download generated transcripts and summaries.
 
 All API interactions reuse the backend endpoints documented in `../README.md`. Ensure environment variables for the backend are configured and the server is running before starting the frontend.

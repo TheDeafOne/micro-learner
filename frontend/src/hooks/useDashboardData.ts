@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { API_BASE_URL } from "@/config";
-import { statusFilters } from "@/constants/status";
 import {
   getHealth,
   getItemDetail,
@@ -49,7 +48,6 @@ export interface DashboardState {
   readonly selectedItemId: number | null;
   readonly filters: DashboardFilters;
   readonly providerOptions: string[];
-  readonly statusFilters: typeof statusFilters;
   readonly itemDetail: ItemDetail | null;
   readonly loadingDetail: boolean;
   readonly detailError: string | null;
@@ -100,6 +98,11 @@ export function useDashboardData(): DashboardState {
   const [refreshingModules, setRefreshingModules] = useState(false);
   const [actionMessage, setActionMessage] = useState<ActionMessage | null>(null);
   const [actionBusy, setActionBusy] = useState<DashboardAction>(null);
+
+  const filtersRef = useRef(filters);
+  const selectedCourseIdRef = useRef<number | null>(selectedCourseId);
+  const selectedModuleIdRef = useRef<number | null>(selectedModuleId);
+  const selectedItemIdRef = useRef<number | null>(selectedItemId);
 
   useEffect(() => {
     const loadHealth = async () => {
@@ -257,6 +260,22 @@ export function useDashboardData(): DashboardState {
     return () => window.clearTimeout(timeout);
   }, [actionMessage]);
 
+  useEffect(() => {
+    filtersRef.current = filters;
+  }, [filters]);
+
+  useEffect(() => {
+    selectedCourseIdRef.current = selectedCourseId;
+  }, [selectedCourseId]);
+
+  useEffect(() => {
+    selectedModuleIdRef.current = selectedModuleId;
+  }, [selectedModuleId]);
+
+  useEffect(() => {
+    selectedItemIdRef.current = selectedItemId;
+  }, [selectedItemId]);
+
   const providerOptions = useMemo(() => {
     const providers = new Set<string>();
     for (const item of items) {
@@ -400,6 +419,91 @@ export function useDashboardData(): DashboardState {
     });
   }, []);
 
+  const websocketUrl = useMemo(() => {
+    try {
+      const url = new URL(API_BASE_URL);
+      url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+      url.pathname = "/ws/events";
+      url.search = "";
+      url.hash = "";
+      return url.toString();
+    } catch (error) {
+      console.warn("Invalid API base URL for websocket connection:", error);
+      return null;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!websocketUrl) {
+      return;
+    }
+    let socket: WebSocket | null = null;
+    let reconnectTimer: number | undefined;
+    let intentionalClose = false;
+
+    const scheduleReconnect = () => {
+      if (intentionalClose || reconnectTimer) {
+        return;
+      }
+      reconnectTimer = window.setTimeout(() => {
+        reconnectTimer = undefined;
+        connect();
+      }, 2000);
+    };
+
+    const connect = () => {
+      socket = new WebSocket(websocketUrl);
+      socket.addEventListener("message", (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          if (payload?.type === "item.update" && payload?.item?.id) {
+            const currentModuleId = selectedModuleIdRef.current;
+            const currentCourseId = selectedCourseIdRef.current;
+            void loadItems(currentModuleId, currentCourseId, filtersRef.current);
+            if (selectedItemIdRef.current === payload.item.id) {
+              void loadItemDetail(payload.item.id);
+            }
+          }
+        } catch (error) {
+          console.warn("Failed to parse websocket payload", error);
+        }
+      });
+      socket.addEventListener("open", () => {
+        // Reset reconnection attempts on successful open.
+        if (reconnectTimer) {
+          window.clearTimeout(reconnectTimer);
+          reconnectTimer = undefined;
+        }
+      });
+      socket.addEventListener("close", () => {
+        if (!intentionalClose) {
+          scheduleReconnect();
+        }
+      });
+      socket.addEventListener("error", () => {
+        if (!intentionalClose) {
+          socket?.close();
+        }
+      });
+    };
+
+    connect();
+
+    return () => {
+      intentionalClose = true;
+      if (reconnectTimer) {
+        window.clearTimeout(reconnectTimer);
+      }
+      if (socket) {
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.close();
+        } else if (socket.readyState === WebSocket.CONNECTING) {
+          socket.addEventListener("open", () => socket?.close(), { once: true });
+        }
+      }
+    };
+  }, [websocketUrl, loadItems, loadItemDetail]);
+
   return {
     apiBaseUrl: API_BASE_URL,
     healthStatus,
@@ -421,7 +525,6 @@ export function useDashboardData(): DashboardState {
     selectedItemId,
     filters,
     providerOptions,
-    statusFilters,
     itemDetail,
     loadingDetail,
     detailError,

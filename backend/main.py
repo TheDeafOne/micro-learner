@@ -7,15 +7,24 @@ if __name__ == "__main__" and __package__ is None:  # pragma: no cover - script 
     sys.path.append(str(Path(__file__).resolve().parent.parent))
     __package__ = "backend"
 
+import asyncio
 import json
 import logging
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 import httpx
-from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query
+from fastapi import (
+    BackgroundTasks,
+    Depends,
+    FastAPI,
+    HTTPException,
+    Query,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from sqlalchemy import func
@@ -23,6 +32,7 @@ from sqlmodel import Session, select
 
 from backend.canvas_client import CanvasClient
 from backend.deps import get_engine, get_session, init_db
+from backend.events import notifier
 from backend.models import Artifact, Course, Item, ItemStatus, Module
 from backend.providers import (
     extract_media_entries,
@@ -61,8 +71,25 @@ app.add_middleware(
 app.state.cors_configured = True
 
 
+@app.websocket("/ws/events")
+async def websocket_events(websocket: WebSocket) -> None:
+    await notifier.connect(websocket)
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        pass
+    finally:
+        await notifier.disconnect(websocket)
+
+
 @app.on_event("startup")
 def on_startup() -> None:
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:  # pragma: no cover - fallback for older loop APIs
+        loop = asyncio.get_event_loop()
+    notifier.set_loop(loop)
     init_db()
     ensure_data_dirs(settings)
     if not logging.getLogger().handlers:
@@ -88,6 +115,31 @@ def parse_media_entries(media_json: str | None) -> list[dict[str, str]]:
             continue
         entries.append({"provider": provider, "url": url})
     return entries
+
+
+def build_item_detail_payload(session: Session, item_id: int) -> dict[str, Any] | None:
+    item = session.get(Item, item_id)
+    if not item:
+        return None
+    artifacts = session.exec(select(Artifact).where(Artifact.item_id == item_id)).all()
+    transcript_artifact = next((a for a in artifacts if a.kind == "transcript"), None)
+    summary_artifact = next((a for a in artifacts if a.kind == "summary"), None)
+    item_payload = ItemRead.model_validate(item).model_dump()
+    media_entries = parse_media_entries(item.media_urls)
+    detail = ItemDetail(
+        **item_payload,
+        transcript_path=transcript_artifact.path if transcript_artifact else None,
+        summary_path=summary_artifact.path if summary_artifact else None,
+        artifacts=[ArtifactRead.model_validate(a) for a in artifacts],
+        media_links=[MediaLink(**entry) for entry in media_entries],
+    )
+    return detail.model_dump(mode="json")
+
+
+def publish_item_update(session: Session, item_id: int) -> None:
+    payload = build_item_detail_payload(session, item_id)
+    if payload:
+        notifier.publish({"type": "item.update", "item": payload})
 
 
 def format_transcript_bundle(sections: list[tuple[str, str, str]]) -> str:
@@ -565,6 +617,7 @@ def run_transcript_job(item_id: int, settings: Settings) -> None:
             item.error = None
             session.add(item)
             session.commit()
+            publish_item_update(session, item_id)
             logger.info("Transcript job completed for item %s", item_id)
         except Exception as exc:  # pragma: no cover - background logging
             logger.exception("Transcript job failed for item %s", item_id)
@@ -572,6 +625,7 @@ def run_transcript_job(item_id: int, settings: Settings) -> None:
             item.error = str(exc)
             session.add(item)
             session.commit()
+            publish_item_update(session, item_id)
 
 
 if __name__ == "__main__":  # pragma: no cover - convenience runner
@@ -613,6 +667,7 @@ def run_summary_job(item_id: int, settings: Settings) -> None:
             item.error = None
             session.add(item)
             session.commit()
+            publish_item_update(session, item_id)
             logger.info("Summary job completed for item %s", item_id)
         except Exception as exc:  # pragma: no cover - background logging
             logger.exception("Summary job failed for item %s", item_id)
@@ -620,3 +675,4 @@ def run_summary_job(item_id: int, settings: Settings) -> None:
             item.error = str(exc)
             session.add(item)
             session.commit()
+            publish_item_update(session, item_id)
