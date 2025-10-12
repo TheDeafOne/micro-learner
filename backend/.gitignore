@@ -1,5 +1,4 @@
 # project specific
-data/
 *.db
 state.json
 *-profile/
