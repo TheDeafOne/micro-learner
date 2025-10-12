@@ -5,9 +5,10 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from dotenv import load_dotenv
 
 DEFAULT_PROFILE_DIR = Path("edge-profile")
-DEFAULT_STATE_FILE = Path("playwright-state.json")
+DEFAULT_STATE_FILE = Path("state.json")
 
 
 @dataclass
@@ -32,6 +33,7 @@ class ManagedContext:
 
 
 def load_config() -> PlaywrightConfig:
+    load_dotenv()
     raw_channel = os.getenv("PLAYWRIGHT_BROWSER_CHANNEL", "chromium").strip()
     channel = raw_channel or None
     user_data_dir = Path(

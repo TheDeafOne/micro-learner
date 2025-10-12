@@ -15,7 +15,7 @@ from pathlib import Path
 
 from playwright.sync_api import sync_playwright
 
-from backend.playwright_utils import launch_context, load_config
+from playwright_utils import launch_context, load_config
 
 
 def parse_args() -> argparse.Namespace:
