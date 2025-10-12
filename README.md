@@ -79,7 +79,7 @@ uv run uvicorn backend.main:app --reload
 3. **List courses** – `GET /me/courses`
 4. **Sync modules + items** – `POST /courses/{course_id}/modules/refresh`  
    Fetches modules and their items, inferring providers from URLs.
-5. **Browse data** – `GET /courses/{id}`, `GET /courses/{id}/modules`, `GET /modules/{id}/items`
+5. **Browse data** – `GET /courses` / `GET /courses/{id}`, `GET /courses/{id}/modules`, `GET /modules/{id}`, `GET /modules/{id}/items`, `GET /items?module_id=…&status=…`
 6. **Fetch transcript** – `POST /items/{id}/fetch-transcript`  
    Queues a background job that launches the appropriate provider:
    - Panopto → `panopto_transcript_scraper.get_transcripts`
@@ -93,6 +93,8 @@ uv run uvicorn backend.main:app --reload
    Requires an existing transcript. Writes `data/summaries/{item_id}.md`, creates/updates the summary artifact, and sets status to `SUMMARY_READY`.
 8. **Inspect status** – `GET /items/{id}`  
    Returns item metadata, detected media links, and paths to the generated artifacts.
+9. **Download artifacts** – `GET /items/{id}/transcript/file` (text), `GET /items/{id}/summary/file` (markdown), or list all with `GET /items/{id}/artifacts`.
+10. **Reset an item** – `POST /items/{id}/reset?delete_artifacts=true` clears status/errors (and optionally deletes artifacts) so you can re-run the pipeline.
 
 Background tasks run inside the FastAPI process using `BackgroundTasks`, so the responses return immediately while work continues asynchronously.
 
