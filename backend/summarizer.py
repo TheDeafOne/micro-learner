@@ -27,7 +27,7 @@ def summarize_transcript(transcript: str, settings: Settings) -> str:
     except ImportError as exc:
         raise RuntimeError("openai package is required for LLM summaries") from exc
 
-    client = OpenAI(api_key=settings.openai_api_key, base_url=settings.base_url)
+    client = OpenAI(api_key=settings.openai_api_key, base_url=settings.openai_base_url)
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         temperature=0.3,
