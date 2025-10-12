@@ -1,7 +1,8 @@
 # project specific
-./data/
+data/
 *.db
 state.json
+*-profile/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

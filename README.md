@@ -43,17 +43,18 @@ Set the following variables in `.env`:
 - `PLAYWRIGHT_STORAGE_STATE` – optional path to a Playwright `state.json` with cached SSO cookies
 - `CORS_ORIGINS` – comma-separated list of allowed frontend origins (defaults to local Vite dev hosts)
 
-### Capture SSO Cookies (recommended)
+### Capture SSO Cookies and Certs
 
 1. Temporarily ensure `PLAYWRIGHT_HEADLESS=true` in your `.env` (default).
 2. Run the helper and complete Microsoft/Zoom login in the opened browser window:
 
    ```bash
-   uv run scripts/setup_sso.py --url "https://your-panopto-or-canvas-url"
+   uv run -m scripts/setup_sso --url "https://your-panopto-or-canvas-url"
    ```
 
    The script saves cookies to `PLAYWRIGHT_STORAGE_STATE` (default `./playwright-state.json`).
-3. Subsequent transcript jobs reuse this state to authenticate headlessly. If you prefer a persistent
+3. While on the browser instance, navigate to chrome://settings/certificates, and import relevant certificates (e.g. corporate proxy certificates)
+4. Subsequent transcript jobs reuse this state to authenticate headlessly. If you prefer a persistent
    profile instead, leave the storage file absent and Playwright will fall back to `PLAYWRIGHT_USER_DATA_DIR`.
 
 The app auto-creates database tables and ensures transcript/summary directories exist under `DATA_DIR`.
