@@ -25,7 +25,7 @@ class Settings(BaseModel):
         alias="PLAYWRIGHT_USER_DATA_DIR",
     )
     playwright_headless: bool = Field(
-        default=False,
+        default=True,
         alias="PLAYWRIGHT_HEADLESS",
     )
     playwright_storage_state: Optional[Path] = Field(

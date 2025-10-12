@@ -224,3 +224,5 @@ __marimo__/
 # project
 .playwright-user-data/
 edge-profile/
+backend/edge-profile/
+playwright-state.json

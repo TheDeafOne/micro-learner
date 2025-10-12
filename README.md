@@ -7,7 +7,7 @@ FastAPI + SQLite backend that syncs Canvas course structure and produces local t
 - Python 3.12+
 - [uv](https://github.com/astral-sh/uv) (recommended) or another PEP 517 compatible installer
 - Canvas Personal Access Token with permission to read your courses and modules
-- Microsoft Edge (Chromium) with a profile that can access your Panopto/Zoom content
+- Chromium-based browser access for Panopto/Zoom (Playwright downloads one automatically, or point to Edge/Chrome via `PLAYWRIGHT_BROWSER_CHANNEL`)
 - Playwright browsers installed (`uv run playwright install` once after syncing)
 
 ## Installation
@@ -38,9 +38,22 @@ Set the following variables in `.env`:
 - `DATA_DIR` – where transcript/summary files are written (default `./data`)
 - `DATABASE_URL` – SQLite connection string (default `sqlite:///./backend.db`)
 - `PLAYWRIGHT_BROWSER_CHANNEL` – browser channel for Playwright (`chromium`, `msedge`, etc.)
-- `PLAYWRIGHT_USER_DATA_DIR` – path to reuse browser profile (default `edge-profile`)
-- `PLAYWRIGHT_HEADLESS` – `true` to run Playwright headless, otherwise `false`
-- `PLAYWRIGHT_STORAGE_STATE` – optional path to a Playwright `state.json` with pre-authenticated cookies
+- `PLAYWRIGHT_USER_DATA_DIR` – path to reuse a persistent browser profile (`edge-profile` by default)
+- `PLAYWRIGHT_HEADLESS` – `true` to run Playwright headless (recommended for servers)
+- `PLAYWRIGHT_STORAGE_STATE` – optional path to a Playwright `state.json` with cached SSO cookies
+
+### Capture SSO Cookies (recommended)
+
+1. Temporarily ensure `PLAYWRIGHT_HEADLESS=true` in your `.env` (default).
+2. Run the helper and complete Microsoft/Zoom login in the opened browser window:
+
+   ```bash
+   uv run scripts/setup_sso.py --url "https://your-panopto-or-canvas-url"
+   ```
+
+   The script saves cookies to `PLAYWRIGHT_STORAGE_STATE` (default `./playwright-state.json`).
+3. Subsequent transcript jobs reuse this state to authenticate headlessly. If you prefer a persistent
+   profile instead, leave the storage file absent and Playwright will fall back to `PLAYWRIGHT_USER_DATA_DIR`.
 
 The app auto-creates database tables and ensures transcript/summary directories exist under `DATA_DIR`.
 
@@ -89,6 +102,7 @@ Background tasks run inside the FastAPI process using `BackgroundTasks`, so the 
 - Transcripts: `data/transcripts/{item_id}.txt`
 - Summaries: `data/summaries/{item_id}.md`
 - Edge profile directory reused by Playwright: `edge-profile/` (created automatically when scrapers run)
+- Optional Playwright storage state file: `playwright-state.json`
 
 ## Development Notes
 
