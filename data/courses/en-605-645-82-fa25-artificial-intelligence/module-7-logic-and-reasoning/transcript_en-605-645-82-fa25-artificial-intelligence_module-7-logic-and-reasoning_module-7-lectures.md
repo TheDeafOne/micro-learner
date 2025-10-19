@@ -1,4 +1,214 @@
-None
+# Transcript for EN.605.645.82.FA25 Artificial Intelligence – Module 7: Logic and Reasoning – Module 7 - Lectures
+
+## https://jh.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=9fbe707f-da1f-44cb-b73c-b0c1017767ce
+
+So this module is about logic,
+and we're going to start first with
+an introduction and motivation.
+So far we've been talking about
+states, state space search.
+And we've talked about representation,
+states,
+actions, transition function and costs.
+We've talked about the mechanisms of state,
+state, space search, global, local.
+When we talked about the result,
+whether we find the goal
+or whether we find a plan to get to the goal.
+And we've looked at algorithms
+such as blind search,
+AStarSearch, adversarial search,
+constraint satisfaction,
+reinforcement learning, and local search.
+Now adversarial search or games had
+a very big influence
+on early artificial intelligence.
+Mainly because playing chess,
+games like that was
+considered to be
+a hard and intelligent thing to do.
+Although they started actually with checkers.
+Logic had the same kind
+of influence on earlier.
+And for the same reasons.
+Proving theorems and differentiating
+equations was
+considered hard and intelligent.
+Now, as it turned out,
+what was hard to intelligent for
+a person was not necessarily
+hard and intelligent for our computer,
+but that's a different story.
+Logic also provides a way for
+reasoning about what the agent knows.
+So we need to start out with a common ground.
+Common understanding of logic.
+We're going to start
+with prepositional logic.
+So in propositional logic,
+T and F are constants.
+A propositional symbol is a sentence.
+Normally you see them as P,
+Q, R capital letters.
+And if P is a sentence and Q is a sentence,
+then the following are also sentences.
+Specifically.
+If we put parentheses around P,
+then that's still a sentence.
+If we put this little NOT symbol
+in front of P,
+that's still a sentence.
+And we use this symbol for or P or Q,
+then that's also still a sentence.
+And all of these rules fall underneath
+syntax is the syntax of propositional logic.
+Now we're going to assign to the constant t,
+the value true into f, the value false.
+So if P is true,
+so is the parenthesis ation of p.
+And if p is true,
+then not p is false.
+And if either P or Q is true or both,
+then P or Q is true.
+This is our semantics.
+This is what logic, logical symbols mean.
+Further wanted to introduce this idea
+of a model of the world.
+A model of a world is assignment of t and
+f to the symbols of sentences.
+So we're going to give
+an example of that here.
+And sort of the classic way of talking
+about these is using truth tables.
+A truth table is simply
+a simple enumeration of all possible models.
+So each row here is
+going to be a model of the world.
+So let's start out with p and q.
+And we can assign
+the constants to each of the values,
+true, true, true, false,
+false, true, false, false.
+These are all possible worlds.
+Now let's see what NOT P is.
+Well, NOT P, according to our semantics,
+if it's true, then false.
+If it's true, then false
+if it's false and true,
+if it's false than true.
+Fairly simple, and we'll say p or q.
+For p or q, we have
+p is true or Q is true, That's true.
+True or false is true,
+false and true is true and false,
+or false is false.
+A sentence that can be true or
+false is called satisfiable.
+Now let's look at p or not.
+P, which is true,
+true or false is true,
+false and true is true,
+false and true is also true.
+A sentence that is true for
+every possible state of
+the world is called a valid sentence.
+Now let's look at P and Q.
+Remember this is, and because it looks
+like an a without the crossbar,
+true and true is true,
+true and false is false.
+False and true is false,
+false and false is false.
+This is also satisfiable.
+So I get p and not p.
+True and false is false,
+true and false is false,
+false and true is false,
+false and true is false.
+This is unsatisfiable.
+A sentence that cannot be true in
+any possible state of the world
+is called an unsatisfiable.
+This we get p implies q.
+It's important to know that implication
+here is not causation.
+It's called the material conditional.
+In actually in logic, you'd end up
+with some very strange things such as,
+if Paris is the capital of France,
+then two plus two is four.
+So this is the truth values for implication.
+It turns out that implication is only ever
+false if q is false.
+Here we have an equivalence.
+Equivalence look to see if
+the implication is true in both directions.
+If p implies q and q implies p.
+So with a little hat here,
+the a will have the crossbar we have and the
+v we have r. And then we have implication,
+and we have equivalents.
+So these are the basic operators
+and relations of prepositional logic.
+So now, although NOT OR and parentheses
+ation are sufficient to
+drive all of propositional logic.
+There are a number of shorthand rules
+and relations that are
+useful for prepositional inference.
+We'll talk about a few of them.
+One is modus ponens.
+And this is the
+one probably all familiar with
+is if P implies
+Q and P is true, then Q is true.
+The other one is modus tollens,
+which is if P implies Q and Q,
+Oops, p implies q and not q, then not p.
+And the convention is that
+everything above the line is taken to be
+true and then everything
+below the line follows from TEA.
+We can actually prove these
+using truth tables.
+So we can add P,
+Q, P implies Q and not Q.
+So here's P, Q, P implies Q.
+Once again, we have our assignments,
+true, true, true,
+false, false, true, false,
+true, true, false, false.
+If we look here, for p implies q
+being true and p being true.
+There's only one case.
+And that has to be that Q is true.
+So that's modus ponens.
+Let's add and not q here.
+Just take the not Q.
+Similarly, if we have,
+it's true that p implies q and not q,
+then the only thing here that
+follows is that p is false.
+And that's modus tollens.
+Notice that P being
+false is the same as not p being true.
+Now, now the rules are like this.
+Some of them are valid for all sentences.
+They are simply manipulations.
+So a very common one is something
+like De Morgan's law.
+So NOT P and Q is equal to not p or not q.
+And as we'll see,
+there are a few other useful rules.
+I'll introduce others as we need them.
+One is unit called unit resolution,
+which is that a p or q,
+not q implies p. And the other is resolution,
+which is p or q is
+true and not q or r is true,
+then P or are true.
+
+## https://jh.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=509be047-be0d-4868-9993-b0cc008732a0
 
 So how can we use this for AI?
 How can we use this in an agent to permit it,
@@ -181,6 +391,8 @@ our implications like this
 would be much more compact.
 So the question is,
 can we, can't, we can't we.
+
+## https://jh.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=2078e79d-1643-4987-a699-b0c6011d6834
 
 So last time we left off,
 we were talking about propositional logic
@@ -401,6 +613,8 @@ And this c is called a Skolem constant.
 But otherwise everything else
 supplies from prepositional logic.
 
+## https://jh.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=d3bc6ed9-98c8-43e5-823f-b0c800cbb51a
+
 So now we're going to be able
 to do some inference.
 And a lot of these are sort of
@@ -596,6 +810,8 @@ Now the problem is this leads to some sort of
 combinatorial explosion
 of things you need to try.
 
+## https://jh.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=a30a1a5f-76f6-4b34-b51e-b0cb0014a337
+
 In the previous video, I didn't
 really explain how I was
 exciting constants two variables.
@@ -681,6 +897,8 @@ a and f of x to be.
 Which is really the same thing as saying
 that a constant can unify with,
 with a function that has no variables in it.
+
+## https://jh.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=b773f86b-5c0e-4e58-9735-b0c1013ca025
 
 Okay, In this lecture
 we're going to talk about resolution.
