@@ -2,280 +2,255 @@
 
 ## https://jh.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=9fbe707f-da1f-44cb-b73c-b0c1017767ce
 
-# Summary — Propositional Logic (Lecture)
+# Propositional Logic — Concise Summary
 
-## Context
-- Logic complements state-space search by providing formal ways to represent and reason about knowledge (states, sentences, goals, models).
+- Motivation and context
+  - Logic provides a formal way to represent and reason about knowledge, similar to state-space/search formalisms used earlier (states, actions, transitions, goals).
+  - Early AI emphasized games and theorem proving as measures of intelligence; logic supports reasoning about what an agent knows.
 
-## Syntax of propositional logic
-- Constants: T (true), F (false).
-- Propositional symbols: P, Q, R, ...
-- Sentence-formation rules: if P is a sentence then:
-  - (P) is a sentence
-  - ¬P is a sentence
-  - P ∨ Q is a sentence
-  - from these, ∧, → (implication), ↔ (equivalence) are defined or introduced as derived operators
+- Syntax (formation rules)
+  - Constants: T (true), F (false).
+  - Propositional symbols (sentences): P, Q, R, ...
+  - If P (and Q) are sentences, then so are:
+    - (P) — parenthesized sentence
+    - ¬P — negation
+    - P ∨ Q — disjunction (or)
+    - P ∧ Q — conjunction (and)
+    - P → Q — implication (material conditional)
+    - P ↔ Q — equivalence (biconditional)
 
-## Semantics
-- Assign T/F to propositional symbols; this assignment is a model (a possible world).
-- Truth of complex sentences determined compositionally from symbol assignments (truth tables).
+- Semantics
+  - A model = an assignment of T/F to each propositional symbol.
+  - Truth-tables enumerate all possible models (rows = models).
+  - Basic truth rules:
+    - ¬P true iff P is false.
+    - P ∨ Q true iff at least one of P, Q is true.
+    - P ∧ Q true iff both P and Q are true.
+    - P → Q is false only when P is true and Q is false; otherwise true (material implication — not causal).
+    - P ↔ Q true iff P and Q have the same truth value.
 
-## Truth tables / models (for two symbols P,Q)
-- All possible models: (P,Q) = (T,T), (T,F), (F,T), (F,F).
-- Example evaluations:
-  - ¬P: flips P in each model.
-  - P ∨ Q: true if P or Q (or both) true.
-  - P ∧ Q: true only when both P and Q true.
-  - P ∨ ¬P: true in every model → valid (tautology).
-  - P ∧ ¬P: false in every model → unsatisfiable (contradiction).
+- Satisfiability / Validity / Unsatisfiability
+  - Satisfiable: a sentence that is true in at least one model.
+  - Valid (tautology): a sentence true in every model (e.g., P ∨ ¬P).
+  - Unsatisfiable (contradiction): a sentence true in no model (e.g., P ∧ ¬P).
 
-## Key semantic categories
-- Satisfiable: a sentence true in at least one model.
-- Valid (tautology): true in every model.
-- Unsatisfiable (contradiction): true in no model.
+- Example truth-patterns (compact)
+  - P: T, F
+  - ¬P: F, T
+  - P ∨ Q: T when P or Q or both T; false only when both F.
+  - P ∧ Q: T only when both T; otherwise false.
+  - P → Q: F only for (P = T, Q = F); otherwise T.
+  - P ↔ Q: T when (P,Q) = (T,T) or (F,F).
 
-## Material implication and equivalence
-- Material conditional P → Q: truth table yields false only when P = T and Q = F (implication is not causation).
-- Equivalence P ↔ Q: true when P → Q and Q → P both hold.
+- Common inference rules
+  - Modus Ponens:
+    - From P → Q and P, infer Q.
+  - Modus Tollens:
+    - From P → Q and ¬Q, infer ¬P.
+  - De Morgan’s laws:
+    - ¬(P ∧ Q) ≡ ¬P ∨ ¬Q
+    - ¬(P ∨ Q) ≡ ¬P ∧ ¬Q
+  - Unit resolution:
+    - From (P ∨ Q) and ¬Q, infer P.
+  - Resolution (binary):
+    - From (P ∨ Q) and (¬Q ∨ R), infer (P ∨ R).
 
-## Useful logical laws and inference rules
-- De Morgan: ¬(P ∧ Q) ≡ ¬P ∨ ¬Q (and dual).
-- Modus ponens: from P → Q and P, infer Q.
-- Modus tollens: from P → Q and ¬Q, infer ¬P.
-- Unit resolution: from (P ∨ Q) and ¬Q, infer P.
-- Resolution (binary): from (P ∨ Q) and (¬Q ∨ R), infer (P ∨ R).
-
-## Notes
-- A small set of connectives (e.g., ¬ and ∨ with parentheses) is sufficient to express all propositional formulas.
-- Inference rules can be checked/proved with truth tables by examining all models.
+- Notes
+  - Many logical operators can be expressed using a small basis (e.g., ¬ and ∨ suffices).
+  - Truth-table proofs can be used to demonstrate validity of inference rules (e.g., show modus ponens/tollens by enumerating models).
 
 ## https://jh.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=509be047-be0d-4868-9993-b0cc008732a0
 
 # Summary
 
-- Domain: a grid “Wumpus”-style world with pits, a single Wumpus, gold, walls, and one arrow. Percepts in a cell:
-  - Stench (S): Wumpus in a neighboring cell.
-  - Breeze (B): pit in a neighboring cell.
-  - Glitter: gold in the cell.
+- Domain: Wumpus (lumps) world — a grid with pits, a single Wumpus, and gold. Hazards kill the agent; getting gold wins. Percepts in a square:
+  - Stench: Wumpus in a neighboring square.
+  - Breeze: pit in a neighboring square.
+  - Glitter: gold in the square.
   - Bump: hit a wall.
   - Scream: Wumpus killed.
 
-- Setup and initial facts:
-  - Agent starts at cell (1,1) with all percepts false.
-  - From no-stench and no-breeze at (1,1) the neighboring cells (2,1) and (1,2) are known safe.
-
 - Notation:
-  - Cij = cell at row i, column j.
-  - Sij true ⇔ Cij has a stench.
-  - Bij true ⇔ Cij has a breeze.
-  - Wij true ⇔ Cij has the Wumpus.
-  - Knowledge base (KB) = set of logical implications relating percepts to hazard locations.
+  - Cij: cell at row i, column j.
+  - Sij: stench sensed in Cij.
+  - Bij: breeze sensed in Cij.
+  - Wij: Wumpus resides in Cij.
+  - Start at C11 with all percept booleans initially false.
 
-- Example logical rules encoded in the KB (propositional form):
-  - If ¬S11 then ¬W11 ∧ ¬W21 ∧ ¬W12.
-  - If ¬S12 then ¬W11 ∧ ¬W12 ∧ ¬W22 ∧ ¬W13.
-  - If S12 then W11 ∨ W12 ∨ W22 ∨ W13 (Wumpus is in one of the neighbors).
-  - If ¬Sij then ¬Wij and ¬W(i-1)j and ¬W(i+1)j and ¬Wi(j-1) and ¬Wi(j+1) (ignoring walls).
-  - If Sij then Wij ∨ W(i-1)j ∨ W(i+1)j ∨ Wi(j-1) ∨ Wi(j+1).
+- Knowledge base (KB) as propositional implications (examples):
+  - ¬S11 ⇒ ¬W11 ∧ ¬W21 ∧ ¬W12 (no stench at 1,1 ⇒ no Wumpus in any neighbor)
+  - ¬S12 ⇒ ¬W11 ∧ ¬W12 ∧ ¬W22 ∧ ¬W13 (similar for other cells)
+  - S12 ⇒ W11 ∨ W12 ∨ W22 ∨ W13 ∨ W? (stench implies Wumpus is in one of the neighboring cells)
+  - analogous implications for breezes and pits (Bij ⇒ pit in one of neighbors; ¬Bij ⇒ no pit in neighbors)
 
-- Inference steps and rules used:
-  - Modus ponens: from (P → Q) and P derive Q.
-  - And-elimination: from (A ∧ B ∧ ...) derive individual conjuncts.
-  - Resolution: use disjunctions and negated literals to eliminate possibilities (e.g., from (P ∨ Q) and ¬Q derive P).
-  - Application:
-    - From ¬S11 and rules, derive ¬W11, ¬W21, ¬W12.
-    - Moving to (2,1) with a breeze yields Bij, so a pit is in (3,1) or (2,2).
-    - Moving to (1,2) with a stench yields S12, so the Wumpus must be in one of the neighbors; using previously derived ¬Wij facts and resolution eliminates alternatives and yields the Wumpus location (conclusion: Wumpus at (1,3) in the toy example).
+- Inference process demonstrated:
+  - From S11 = false and the KB, apply modus ponens to conclude W11, W21, W12 are false (and-elimination to split conjuncts).
+  - Move to C21: Bij = true (breeze). From Bij and KB: pit at 31 or 22 (disjunction).
+  - Move to C12: S12 = true (stench). From S12 and the KB get a disjunction for possible Wumpus locations. Using prior facts that rule out W11 and W12 (from earlier ¬S11), and using resolution to eliminate possibilities, deduce the Wumpus must be in a specific remaining cell (e.g., W13).
+  - Repeated use of modus ponens, and-elimination, and resolution yields concrete safe/unsafe cell conclusions.
 
 - Observations about representation:
-  - Propositional logic is powerful but cumbersome: it requires enumerating every propositional atom (no variables, no functions/relations).
-  - More compact, general rules would use indices/variables (e.g., ¬Sij → ¬Wij ∧ ¬W(i-1)j ∧ ¬W(i+1)j ∧ ¬Wi(j-1) ∧ ¬Wi(j+1)).
-  - The transcript closes by posing the question of whether such generalizations (variables and quantified rules) can be used to make the representation more compact and convenient.
+  - Propositional logic with concrete atoms and implications is powerful enough to reason and derive safe moves, but it is cumbersome:
+    - No variables, no functions/relations, so every cell-specific rule must be written separately.
+    - Desirable compact form would use variables/quantifiers to express general rules such as:
+      - ∀i,j: ¬Sij ⇒ ∧neighbors ¬Wneighbor
+      - ∀i,j: Sij ⇒ ∨neighbors Wneighbor
+  - This motivates moving to a more expressive representation (first-order logic or a rule schema) to avoid large, repetitive KBs.
 
 ## https://jh.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=2078e79d-1643-4987-a699-b0c6011d6834
 
-# First-order logic (predicate calculus) — concise summary
+# First‑Order Logic (Predicate Calculus) — Summary
 
-- Purpose: Extends propositional logic with constants, functions, variables and quantifiers to allow compact, structured reasoning.
-
-- Syntax elements
-  - Constants: named objects (e.g., John).
-  - Functions: map objects to objects (e.g., LeftLeg(John)). Functions do NOT return truth values.
-  - Predicates: special functions returning true/false (e.g., Brother(x,y), Parent(John,Sam)).
-  - Variables: x, y, ...
+- Language elements
+  - Constants: named domain objects (e.g., John).
+  - Functions: map objects to objects (e.g., leftLeg(John) returns an object).
+  - Predicates: map objects (or tuples of objects) to truth values (e.g., Brother(x,y)).
+  - Variables: placeholders (x, y, ...).
   - Connectives: ¬, ∧, ∨, →, ↔ (as in propositional logic).
   - Quantifiers: ∀ (for all), ∃ (there exists).
-  - Equality: available as usual.
+  - Equality: = for identity.
 
-- Examples
-  - Parent(John,Sam) ∧ Male(John) → Father(John,Sam).
-  - HasLeftFoot(John) → HasLeftLeg(John) (use predicates to state properties).
+- Functions vs predicates
+  - Functions return objects, not truth values. Bare terms like leftFoot(John) cannot be used as propositions.
+  - Predicates are needed to assert truth about terms (e.g., HasLeftFoot(John) → HasLeftLeg(John)).
 
-- Quantifier semantics and issues
-  - ∀x P(x): P(x) true for every relevant instantiation of x — behaves like a big conjunction (and).
-  - ∃x P(x): P(x) true for at least one instantiation — behaves like a big disjunction (or).
-  - Universe of discourse / typing matters: need to restrict x (e.g., Person(x) → Loves(x,Raymond)) to avoid unintended meanings.
-  - Scope matters: ∀x (AtJHU(x) → Smart(x)) = everyone at JHU is smart; ∀x (AtJHU(x) ∧ Smart(x)) = everyone is at JHU and smart (different).
-  - Order of same quantifiers is interchangeable: ∀x ∀y ... = ∀y ∀x (similarly for ∃).
-  - Mixed quantifiers are order-sensitive:
-    - ∃x ∀y Loves(x,y): there exists someone who loves everyone.
-    - ∀y ∃x Loves(x,y): for each person y there exists someone who loves y (different).
+- Semantics of quantifiers
+  - ∀x P(x) ≈ a (possibly infinite) conjunction: P must hold for every relevant instantiation of x.
+  - ∃x P(x) ≈ a disjunction: P must hold for at least one instantiation.
+  - The universe of discourse or typing matters: use predicates or implication to restrict domain (e.g., ∀x (Person(x) → LovesRaymond(x)) means “everyone (who is a person) loves Raymond”).
+  - Beware of syntax differences: ∀x (AtJHU(x) → Smart(x)) asserts “everyone at JHU is smart”; ∀x (AtJHU(x) ∧ Smart(x)) wrongly asserts “everyone is at JHU and everyone is smart.”
 
-- Quantifier duality
-  - ∀x P(x) ≡ ¬∃x ¬P(x)
-  - ∃x P(x) ≡ ¬∀x ¬P(x)
+- Quantifier properties
+  - Same quantifier commutes: ∀x ∀y P ≡ ∀y ∀x (and similarly for ∃).
+  - Mixed quantifiers do not commute: ∃x ∀y Loves(x,y) (someone loves everyone) ≠ ∀y ∃x Loves(x,y) (for each person there is someone who loves them).
+  - Duality via negation:
+    - ¬∃x P(x) ≡ ∀x ¬P(x)
+    - ¬∀x P(x) ≡ ∃x ¬P(x)
 
 - Inference with quantifiers
-  - Most propositional inference carries over, but quantifiers require instantiation rules:
-    - Universal elimination (instantiation): From ∀x P(x) infer P(c) for any appropriate constant c.
-    - Existential elimination: From ∃x P(x) infer P(c) for some fresh constant c not used elsewhere (a Skolem constant).
-  - These instantiation steps are essential for applying propositional-style inference in first-order proofs.
+  - Universal elimination (instantiation): from ∀x P(x) infer P(c) for any appropriate constant c.
+  - Existential elimination: from ∃x P(x) infer P(c) for some fresh constant c not used elsewhere (a Skolem constant).
+  - Most propositional inference methods carry over, but quantifiers require these instantiation steps to be used effectively in proofs and reasoning.
+
+- Practical note
+  - Correct use of quantifier scope, domain restrictions (typing), and fresh constants for existential reasoning is essential to avoid unintended meanings.
 
 ## https://jh.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=d3bc6ed9-98c8-43e5-823f-b0c800cbb51a
 
 # Summary
 
-## First-order logic representation
-- Natural-language facts and rules are converted into predicates and quantified implications.  
-  Example:
-  - Buffalo(Bob), Pig(Pat)
-  - ∀x,y (Buffalo(x) ∧ Pig(y) ⇒ Faster(x,y))
-- Inference uses standard logical rules (universal elimination, modus ponens, and-introduction/elimination).
-- Substitution assigns constants to variables (e.g., x := Bob, y := Pat) to instantiate rules.
+- Conversion to first-order logic
+  - Translate facts and rules into predicates and quantified implications.  
+    - Example predicates: Buffalo(x), Pig(y), Slug(z), Faster(x,y).  
+    - Example rules: ∀x,y (Buffalo(x) ∧ Pig(y) → Faster(x,y)); ∀y,z (Pig(y) ∧ Slug(z) → Faster(y,z)); ∀x,y,z (Faster(x,y) ∧ Faster(y,z) → Faster(x,z)).
+  - Ground facts: Buffalo(Bob), Pig(Pat), Slug(Steve).
 
-## Inference as search
-- Proving a goal from a knowledge base is a state-space search: apply rules to produce new facts until goal is derived (or disproved).
-- Two systematic strategies: forward chaining and backward chaining.
+- Inference primitives
+  - Use standard logical rules (universal elimination/instantiation, modus ponens, and-introduction/elim) and substitution to derive conclusions.
+  - Variables are local to each sentence (the x in one rule is not automatically the same x in another).
 
-## Forward chaining (data-driven)
-- Match left-hand sides (LHS) of implications against known facts to derive new facts; repeat until goal reached.
-- Example setup:
-  - Facts: Buffalo(Bob), Pig(Pat), Slug(Steve)
-  - Rules:
-    1. ∀x,y (Buffalo(x) ∧ Pig(y) ⇒ Faster(x,y))
-    2. ∀y,z (Pig(y) ∧ Slug(z) ⇒ Faster(y,z))
-    3. ∀x,y,z (Faster(x,y) ∧ Faster(y,z) ⇒ Faster(x,z))
-- Derivation:
-  - From 1 + facts → Faster(Bob,Pat)
-  - From 2 + facts → Faster(Pat,Steve)
-  - From 3 + those facts → Faster(Bob,Steve)
-- Note: variables in different sentences are distinct (need renaming/instantiation).
+- Forward chaining (data-driven)
+  - Match the left-hand side (antecedents) of implications against known facts to produce new facts, iterating until the goal is found or no more facts can be produced.
+  - Example derivation:
+    1. From Buffalo(Bob) and Pig(Pat) + rule ∀x,y (Buffalo(x) ∧ Pig(y) → Faster(x,y)) derive Faster(Bob,Pat).
+    2. From Pig(Pat) and Slug(Steve) + rule ∀y,z (Pig(y) ∧ Slug(z) → Faster(y,z)) derive Faster(Pat,Steve).
+    3. From Faster(Bob,Pat) and Faster(Pat,Steve) + rule ∀x,y,z (Faster(x,y) ∧ Faster(y,z) → Faster(x,z)) derive Faster(Bob,Steve).
 
-## Backward chaining (goal-driven)
-- Start from a goal (RHS of an implication), match it to rule consequents to generate subgoals (new LHS facts to prove), recurse until ground facts are reached.
-- Example goal: Faster(Bob,Steve)
-  - Instantiate rule 3 with x=Bob, z=Steve → subgoals: Faster(Bob,y) and Faster(y,Steve)
-  - Prove Faster(Bob,y) via rule 1 with y=Pat → requires Buffalo(Bob), Pig(Pat) (both facts)
-  - Prove Faster(y,Steve) via rule 2 with y=Pat → requires Pig(Pat), Slug(Steve) (both facts)
-  - Goal proven once subgoals are all satisfied.
+- Backward chaining (goal-driven)
+  - Start with a goal and match it to the right-hand side (consequent) of implications to generate subgoals (new left-hand-side facts to prove), recursively until ground facts are reached.
+  - Example for goal Faster(Bob,Steve):
+    - Match to rule ∀x,y,z (Faster(x,y) ∧ Faster(y,z) → Faster(x,z)) → subgoals Faster(Bob,?y) and Faster(?y,Steve).
+    - Instantiate ?y = Pat. Prove Faster(Bob,Pat) via rule 1 using Buffalo(Bob) and Pig(Pat). Prove Faster(Pat,Steve) via rule 2 using Pig(Pat) and Slug(Steve).
 
-## Search characteristics and issues
-- Backtracking occurs when alternative instantiations lead to contradictions or dead ends.
-- Backward chaining behaves like depth-first search, building proofs piecewise.
-- Both approaches can suffer combinatorial explosion due to many possible instantiations and rule applications—significant scalability concern (relevant for planning and agent design).
+- Search considerations and problems
+  - The inference process is a form of search (often depth-first), requiring instantiation choices and potentially backtracking when contradictions or dead ends occur.
+  - Different instantiations can lead to divergent paths or contradictions; backtracking is needed to recover.
+  - These choices can cause combinatorial explosion in the space of facts/rules to try—an important practical limitation (relevant to planning algorithms).
 
 ## https://jh.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=a30a1a5f-76f6-4b34-b51e-b0cb0014a337
 
-- Definition: Unification finds a substitution Θ (possibly empty) that makes two terms/sentences identical. Failure can be indicated by null; an empty substitution means no change was needed.
+- Definition
+  - Unification: process that finds a substitution θ making two expressions identical.
+  - unify(P, Q) returns a substitution list θ (possibly empty). Failure can be indicated by null (or a special failure value); an empty list means no substitution needed.
 
-- Basic rules:
-  - Constants/identical symbols unify directly.
-  - Functions unify only if they have the same function symbol and arity, and their arguments unify recursively.
-  - Variables can be assigned (substituted) with constants, other variables, or terms (including functions), subject to the occurs-check (a variable cannot be assigned a term that contains that same variable).
-  - Before unification, rename variables to be unique across sentences ("standardize apart") so identically named variables in different sentences are treated as distinct.
+- Simple examples
+  - unify(P(a, X), P(a, B)) → {X = B}
+  - unify(P(a, X), P(Y, B)) → {Y = a, X = B}
+  - unify(P(a, X), P(Y, f(Y))) → {Y = a, X = f(a)} (variables may be substituted by compound terms/functions)
 
-- Examples:
-  - Unify P(a, X) and P(a, B) → Θ = {X/B}.
-  - Unify P(a, X) and P(Y, B) → Θ = {Y/a, X/B}.
-  - Unify P(a, X) and P(Y, f(Y)):
-    - Standardize if needed, then set Y = a, then X = f(a) → Θ = {Y/a, X/f(a)}. This shows variables can be bound to function terms.
-  - Variable name collision resolved by standardizing apart:
-    - P(a, X) and P(X, B) (same name X used twice) → rename to P(a, X1) and P(X2, B) then unify → Θ = {X1/B, X2/a}.
+- Standardizing apart
+  - Variables with the same name in different sentences must be renamed to fresh, unique names before unification (standardize apart). Example:
+    - P(a, X) and P(X, B) should be treated as P(a, X1) and P(X2, B) so X1 and X2 are distinct. Then unify → {X1 = B, X2 = a}.
+  - Without standardizing, same-name variables across clauses can be incorrectly treated as the same variable.
 
-- Failure cases:
-  - Contradictory assignments: P(a, B) and P(X, X) would require X = a and X = B simultaneously → failure.
-  - Occurs-check or structure mismatch: a variable cannot be assigned a term that contains itself (e.g., X = f(X) fails); a constant cannot unify with a function term that has no variables to absorb the mismatch.
+- Failure cases
+  - Conflicting assignments: attempting to assign two different constants to the same variable (e.g., trying to force a variable to be both a and b).
+  - Multiple occurrences constraint: if a single variable must equal two different ground terms because it appears twice in a pattern (e.g., matching P(a, B) with P(X, X) fails if a ≠ B).
+  - Occurs/check-related failures: cannot assign a variable to a term that contains that variable (avoids infinite regress), and cannot equate a constant with a non-variable function term when they are different.
 
-- Practical unification procedure (high level):
-  1. Standardize variables apart.
-  2. Recursively match terms: if both are identical symbols succeed; if one is a variable, try to bind it (respect occurs-check); if both are functions, check same symbol/arity and unify argument lists.
-  3. Combine substitutions; if a contradiction or occurs-check failure arises return failure.
+- Key points
+  - Unification can bind variables to constants or to compound terms (functions).
+  - Always standardize apart before attempting unification to avoid accidental variable name clashes.
+  - Unification succeeds when a consistent substitution exists; otherwise it fails for the above reasons.
 
 ## https://jh.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=b773f86b-5c0e-4e58-9735-b0c1013ca025
 
-# Summary — Resolution and CNF (concise, detailed)
+# Summary — Resolution and CNF (concise, technical)
 
-## Core idea
-- Resolution + proof by contradiction yields a complete automatic theorem prover for first-order logic.
-- Procedure: negate the query, add it to the KB (in CNF), and apply resolution until deriving the empty clause (contradiction). If contradiction arises, KB entails the original query.
+- Resolution rule(s)
+  - Unit resolution: from (p ∨ q) and (¬q) infer p.
+  - General resolution: from (p ∨ q) and (¬q ∨ r) infer (p ∨ r).
+  - Add proof by contradiction: negate the query, add it to the KB, and derive a contradiction (empty clause) to show the KB entails the query.
 
-## Conjunctive Normal Form (CNF) conversion steps
-1. Convert natural-language facts to first-order logic (FOL).
-2. Eliminate implications: (P → Q) ≡ (¬P ∨ Q).
-3. Move negations inward (De Morgan, double negation).
-4. Rename variables to avoid name clashes (standardize apart).
-5. Eliminate existential quantifiers by Skolemization (introduce Skolem constants/functions).
-6. Move universal quantifiers left and then drop them (all remaining free variables are implicitly universal).
-7. Distribute ∨ over ∧ if needed to obtain a conjunction of disjunctions.
-8. Split the conjunction into separate clauses (each a disjunction of literals).
+- Conjunctive Normal Form (CNF)
+  - CNF = conjunction of disjunctions (clauses). Clauses can be written one per line.
+  - Standard CNF conversion steps:
+    1. Eliminate implications: (P ⇒ Q) ≡ (¬P ∨ Q).
+    2. Move negations inward (De Morgan, double negation).
+    3. Rename variables to avoid name clashes (standardize apart).
+    4. Eliminate existential quantifiers via Skolemization (introduce Skolem constants/functions).
+    5. Move universal quantifiers to front and then drop them for clause form.
+    6. Distribute OR over AND as needed to obtain conjunction of clauses.
+    7. Split conjunction into separate clauses and standardize variables across clauses.
 
-Keep a fresh copy of the original KB when testing different queries.
+- Handling a query
+  - Convert the query to FOL, negate it, then convert that negation to CNF.
+  - Use duality to change an existential-negated query into a universal form (so you add universally quantified clauses). Keep variables fresh to avoid accidental unification with KB constants.
+  - Add the negated query clauses to a fresh copy of the KB for the proof attempt.
 
-## Example (full walkthrough)
-Natural-language KB:
-- Whoever can read is literate.
-- Dolphins are not literate.
-- Some dolphins are intelligent.
+- Worked example (KB and query)
+  - KB (text → FOL):
+    - ∀x (Read(x) ⇒ Literate(x))
+    - ∀x (Dolphin(x) ⇒ ¬Literate(x))
+    - ∃x (Dolphin(x) ∧ Intelligent(x))
+  - Query: ∃x (Intelligent(x) ∧ ¬Read(x))
+  - Negated query → CNF:
+    - ¬∃x (Intelligent(x) ∧ ¬Read(x)) ≡ ∀x (¬Intelligent(x) ∨ Read(x))
+  - Skolemize existential in KB: introduce constant a for the existential dolphin:
+    - Dolphin(a)
+    - Intelligent(a)
+  - Clauses (standardized apart):
+    - ¬Read(x1) ∨ Literate(x1)
+    - ¬Dolphin(x2) ∨ ¬Literate(x2)
+    - Dolphin(a)
+    - Intelligent(a)
+    - ¬Intelligent(x3) ∨ Read(x3)   (negated query clause)
 
-Query:
-- Is there someone who is intelligent and cannot read?
+- Resolution proof sequence (with unifiers θ shown)
+  1. Resolve Intelligent(a) with ¬Intelligent(x3):
+     - θ1 = {x3/a} → derive Read(a).
+  2. Resolve Read(a) with ¬Read(x1):
+     - θ2 = {x1/a} → derive Literate(a).
+  3. Resolve Literate(a) with ¬Literate(x2):
+     - θ3 = {x2/a} → derive ¬Dolphin(a).
+  4. Resolve ¬Dolphin(a) with Dolphin(a):
+     - derive empty clause (contradiction).
+  - Conclusion: empty clause → original (non-negated) query is entailed by KB.
 
-1. FOL translation:
-   - ∀x (reads(x) → literate(x))
-   - ∀x (dolphin(x) → ¬literate(x))
-   - ∃x (dolphin(x) ∧ intelligent(x))
-   - Query: ∃x (intelligent(x) ∧ ¬reads(x))
-
-2. Remove implications:
-   - ∀x (¬reads(x) ∨ literate(x))
-   - ∀x (¬dolphin(x) ∨ ¬literate(x))
-   - ∃x (dolphin(x) ∧ intelligent(x))
-
-3. Skolemize the existential (introduce Skolem constant a):
-   - dolphin(a)
-   - intelligent(a)
-
-4. Drop universals and standardize apart (use distinct variable names x1, x2, x3 for clauses):
-   - C1: ¬reads(x1) ∨ literate(x1)
-   - C2: ¬dolphin(x2) ∨ ¬literate(x2)
-   - C3: dolphin(a)
-   - C4: intelligent(a)
-
-5. Negate the query and convert to CNF without Skolemizing the negation:
-   - Query negation: ¬∃x (intelligent(x) ∧ ¬reads(x)) ≡ ∀x (¬intelligent(x) ∨ reads(x))
-   - C5: ¬intelligent(x3) ∨ reads(x3)
-
-6. Add C5 to KB and apply resolution (using standard unification/substitution θ each step):
-
-   - Resolve C5 (¬intelligent(x3) ∨ reads(x3)) with C4 (intelligent(a))
-     - θ1 = { x3 → a }
-     - Resolvent R1: reads(a)
-
-   - Resolve R1 (reads(a)) with C1 (¬reads(x1) ∨ literate(x1))
-     - θ2 = { x1 → a }
-     - Resolvent R2: literate(a)
-
-   - Resolve R2 (literate(a)) with C2 (¬dolphin(x2) ∨ ¬literate(x2))
-     - θ3 = { x2 → a }
-     - Resolvent R3: ¬dolphin(a)
-
-   - Resolve R3 (¬dolphin(a)) with C3 (dolphin(a))
-     - No variables to bind; resolvent is the empty clause (contradiction).
-
-7. Conclusion: empty clause derived ⇒ contradiction ⇒ original (non-negated) query is entailed by the KB. Therefore there exists an intelligent individual who cannot read.
-
-## Practical points and remarks
-- Resolution is a search process; control strategy matters (unit resolution, set-of-support, etc.).
-- Substitution sets (the θs) are often of interest (they provide the witness/answer, e.g., a).
-- Backtracking and exploring multiple resolution trees may be necessary in complex cases.
-- Resolution underlies logic programming (e.g., Prolog uses resolution/SLD resolution).
+- Practical notes and strategies
+  - Resolution is a search procedure; common control strategies include:
+    - Unit resolution (prioritize unit clauses).
+    - Set-of-support (start with clauses derived from the negated query and only resolve against their descendants).
+  - Maintain and show substitution lists (θ) during unification; substitution sets can be the desired answers.
+  - Backtracking and multiple resolution trees may be necessary; sometimes several partial trees unify to produce the final contradiction.
+  - Resolution underlies logic programming (e.g., Prolog) and provides an automatic theorem-proving method.
