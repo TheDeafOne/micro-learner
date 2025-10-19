@@ -79,34 +79,32 @@ def normalize_panopto_url(url: str) -> str:
     return url
 
 
-def _ensure_panopto_page(page, ctx):
-    if PANOPTO_URL_RE.search(page.url):
-        return page
-    if MS_SSO_RE.search(page.url):
-        print("Complete Microsoft SSO in the opened window; waiting…")
-        while True:
-            for candidate in ctx.pages:
-                try:
-                    url = candidate.url
-                except Exception:
-                    continue
-                if url and PANOPTO_URL_RE.search(url):
-                    return candidate
-            if page.is_closed():
-                break
-            page.wait_for_timeout(1000)
+def _ensure_panopto_page(ctx):
+    informed_login = False
+    while True:
+        pages = list(ctx.pages)
+        if not pages:
+            raise RuntimeError(
+                "All browser windows were closed before reaching the Panopto viewer."
+            )
+        for candidate in pages:
             try:
-                current_url = page.url
+                url = candidate.url
             except Exception:
-                current_url = ""
-            if current_url and PANOPTO_URL_RE.search(current_url):
-                return page
-        raise RuntimeError(
-            "The authentication window closed before reaching the Panopto viewer."
-        )
-    raise RuntimeError(
-        "Did not reach a Panopto viewer page. If login is required, complete it in the opened browser window."
-    )
+                continue
+            if not url:
+                continue
+            if PANOPTO_URL_RE.search(url):
+                return candidate
+        if not informed_login and any(
+            MS_SSO_RE.search(getattr(p, "url", "") or "") for p in pages
+        ):
+            print("Complete Microsoft SSO in the opened window; waiting…")
+            informed_login = True
+        try:
+            pages[0].wait_for_timeout(1000)
+        except Exception:
+            pass
 
 
 def _goto_panopto(page, ctx, url: str):
@@ -114,7 +112,8 @@ def _goto_panopto(page, ctx, url: str):
         page.goto(url, wait_until="domcontentloaded", timeout=GOTO_TIMEOUT_MS)
     except PlaywrightTimeoutError as exc:
         raise RuntimeError(f"Timed out loading Panopto page: {url}") from exc
-    return _ensure_panopto_page(page, ctx)
+    page.wait_for_timeout(500)
+    return _ensure_panopto_page(ctx)
 
 
 def _wait_for_captions(page) -> str:

@@ -32,35 +32,48 @@ def _close_all_pages(ctx) -> None:
             pass
 
 
-def _goto_zoom(page, url: str):
+def _safe_url(page) -> str:
+    try:
+        return page.url
+    except Exception:
+        return ""
+
+
+def _goto_zoom(page, url: str) -> None:
     try:
         page.goto(url, wait_until="domcontentloaded", timeout=GOTO_TIMEOUT_MS)
     except PlaywrightTimeoutError as exc:
         raise RuntimeError(f"Timed out loading Zoom page: {url}") from exc
-    return page
+    # give any auto-redirects a moment to settle
+    page.wait_for_timeout(500)
 
 
-def _ensure_zoom_recording(page, ctx):
-    if ZOOM_RECORDING_RE.search(page.url):
-        return page
-    if MS_SSO_RE.search(page.url):
-        print("Complete Microsoft login for Zoom in the opened browser window; waiting…")
-        while True:
-            for candidate in ctx.pages:
-                try:
-                    url = candidate.url
-                except Exception:
-                    continue
-                if url and ZOOM_RECORDING_RE.search(url):
-                    return candidate
-            if page.is_closed():
-                raise RuntimeError(
-                    "The authentication window closed before reaching the Zoom recording."
-                )
-            page.wait_for_timeout(1000)
-            if not page.is_closed() and ZOOM_RECORDING_RE.search(page.url):
-                return page
-    return page
+def _ensure_zoom_recording(ctx):
+    informed_login = False
+    while True:
+        pages = list(ctx.pages)
+        if not pages:
+            raise RuntimeError(
+                "All browser windows were closed before reaching the Zoom recording."
+            )
+        for candidate in pages:
+            url = _safe_url(candidate)
+            if not url:
+                continue
+            if ZOOM_RECORDING_RE.search(url):
+                return candidate
+        if not informed_login and any(
+            MS_SSO_RE.search(_safe_url(p)) for p in pages
+        ):
+            print(
+                "Complete Microsoft login for Zoom in the opened browser window; waiting…"
+            )
+            informed_login = True
+        # Wait briefly before checking again; pick the first open page as the timer source
+        try:
+            pages[0].wait_for_timeout(1000)
+        except Exception:
+            pass
 
 
 def _wait_for_transcript(page) -> str:
@@ -80,18 +93,9 @@ def get_transcript_text(url: str) -> str:
         ctx = _launch_context(pw)
         try:
             page = ctx.new_page()
-            current_page = page
             try:
-                current_page = _ensure_zoom_recording(_goto_zoom(page, url), ctx)
-                try:
-                    current_url = current_page.url
-                except Exception:
-                    current_url = ""
-                if not current_url or not ZOOM_RECORDING_RE.search(current_url):
-                    raise RuntimeError(
-                        "Did not reach a Zoom recording page after login. "
-                        "Ensure the recording loads in the opened browser window."
-                    )
+                _goto_zoom(page, url)
+                current_page = _ensure_zoom_recording(ctx)
                 return _wait_for_transcript(current_page)
             finally:
                 _close_all_pages(ctx)
@@ -110,18 +114,9 @@ def get_transcripts(urls: Union[str, List[str]]) -> Dict[str, str]:
         try:
             for url in urls:
                 page = ctx.new_page()
-                current_page = page
                 try:
-                    current_page = _ensure_zoom_recording(_goto_zoom(page, url), ctx)
-                    try:
-                        current_url = current_page.url
-                    except Exception:
-                        current_url = ""
-                    if not current_url or not ZOOM_RECORDING_RE.search(current_url):
-                        raise RuntimeError(
-                            "Did not reach a Zoom recording page after login. "
-                            "Ensure the recording loads in the opened browser window."
-                        )
+                    _goto_zoom(page, url)
+                    current_page = _ensure_zoom_recording(ctx)
                     results[url] = _wait_for_transcript(current_page)
                 finally:
                     _close_all_pages(ctx)
