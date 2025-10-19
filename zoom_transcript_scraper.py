@@ -5,71 +5,82 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Union
 
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError, sync_playwright
 
 PROFILE_DIR = Path("edge-profile")  # persists cookies/session across runs
+TRANSCRIPT_SELECTOR = ".transcript-container, .audio-transcript.single-panel"
+GOTO_TIMEOUT_MS = 60_000
+TRANSCRIPT_TIMEOUT_MS = 45_000
 
 
-def get_transcript_text(url):
-    with sync_playwright() as pw:
-        # Use installed Edge, headed (no headless.exe); avoids the firewall block
-        ctx = pw.chromium.launch_persistent_context(
-            user_data_dir=str(PROFILE_DIR),
-            channel="msedge",
-            headless=False,
-        )
-        page = ctx.new_page()
-        page.goto(url, wait_until="domcontentloaded")
-        text = page.locator(".transcript-container").inner_text()
-        ctx.close()
+def _launch_context(pw):
+    return pw.chromium.launch_persistent_context(
+        user_data_dir=str(PROFILE_DIR),
+        channel="msedge",
+        headless=False,
+    )
+
+
+def _goto_zoom(page, url: str) -> None:
+    try:
+        page.goto(url, wait_until="domcontentloaded", timeout=GOTO_TIMEOUT_MS)
+    except PlaywrightTimeoutError as exc:
+        raise RuntimeError(f"Timed out loading Zoom page: {url}") from exc
+
+
+def _wait_for_transcript(page) -> str:
+    try:
+        page.wait_for_selector(TRANSCRIPT_SELECTOR, timeout=TRANSCRIPT_TIMEOUT_MS)
+    except PlaywrightTimeoutError as exc:
+        raise RuntimeError("Timed out waiting for Zoom transcript to render.") from exc
+    locator = page.locator(TRANSCRIPT_SELECTOR).first
+    text = locator.inner_text()
+    if not text or not text.strip():
+        raise RuntimeError("Zoom transcript was empty.")
     return text
 
 
+def get_transcript_text(url: str) -> str:
+    with sync_playwright() as pw:
+        ctx = _launch_context(pw)
+        try:
+            page = ctx.new_page()
+            try:
+                _goto_zoom(page, url)
+                return _wait_for_transcript(page)
+            finally:
+                page.close()
+        finally:
+            ctx.close()
+
+
 def get_transcripts(urls: Union[str, List[str]]) -> Dict[str, str]:
-    """Open each Zoom link in the same Edge profile and grab transcript text.
-    Returns {url: transcript_text or None}."""
+    """Open each Zoom link in the same Edge profile and grab transcript text."""
     if isinstance(urls, str):
         urls = [urls]
 
     results: Dict[str, str] = {}
     with sync_playwright() as pw:
-        ctx = pw.chromium.launch_persistent_context(
-            user_data_dir=str(PROFILE_DIR),  # existing profile with your SSO
-            channel="msedge",
-            headless=False,
-        )
+        ctx = _launch_context(pw)
         try:
             for url in urls:
-                text = None
                 page = ctx.new_page()
                 try:
-                    page.goto(url, wait_until="domcontentloaded",
-                              timeout=60_000)
-                    # Wait for transcript to render; support either container class you’ve seen
-                    page.wait_for_selector(
-                        ".transcript-container, .audio-transcript.single-panel",
-                        timeout=45_000
-                    )
-                    text = page.locator(
-                        ".transcript-container, .audio-transcript.single-panel"
-                    ).first.inner_text()
-                except Exception:
-                    text = None
+                    _goto_zoom(page, url)
+                    results[url] = _wait_for_transcript(page)
                 finally:
-                    results[url] = text
                     page.close()
         finally:
             ctx.close()
     return results
 
 
-def main():
+def main() -> None:
     if len(sys.argv) < 2:
-        print("Usage: uv run open_zoom_min.py \"<zoom_play_url>\"")
+        print("Usage: uv run zoom_transcript_scraper.py <zoom_play_url>")
         raise SystemExit(2)
 
     url = sys.argv[1]
-
     print(get_transcript_text(url))
 
 
