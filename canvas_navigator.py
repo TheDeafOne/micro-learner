@@ -198,6 +198,35 @@ async def summarize_transcripts(transcripts: Sequence[str]) -> List[str]:
     return [response for _, response in responses]
 
 
+def _parse_multi_selection(selection: str, max_index: int) -> Optional[List[int]]:
+    tokens = [token.strip() for token in selection.replace(" ", "").split(",") if token]
+    indices: List[int] = []
+    for token in tokens:
+        if "-" in token:
+            try:
+                start_str, end_str = token.split("-", 1)
+                start, end = int(start_str), int(end_str)
+            except ValueError:
+                return None
+            if start < 1 or end < 1 or end < start or end > max_index:
+                return None
+            indices.extend(range(start, end + 1))
+        else:
+            if not token.isdigit():
+                return None
+            idx = int(token)
+            if idx < 1 or idx > max_index:
+                return None
+            indices.append(idx)
+    if not indices:
+        return None
+    seen: Dict[int, None] = {}
+    for idx in indices:
+        if idx not in seen:
+            seen[idx] = None
+    return list(seen.keys())
+
+
 def prompt_choice(
     options: Sequence[Any],
     label: str,
@@ -218,6 +247,35 @@ def prompt_choice(
             if 1 <= idx <= len(options):
                 return options[idx - 1]
         print(f"Invalid selection '{choice}'. Please try again.")
+
+
+def prompt_multi_choice(
+    options: Sequence[Any],
+    label: str,
+    formatter: Callable[[Any, int], str],
+) -> List[Any]:
+    if not options:
+        raise ValueError(f"No {label} options available.")
+
+    prompt_hint = (
+        f"Select {label} by numbers (e.g. '1,3-5'); "
+        "enter 'a' for all or 'q' to quit: "
+    )
+
+    while True:
+        print(f"\nAvailable {label}:")
+        for idx, option in enumerate(options, start=1):
+            print(f"  [{idx}] {formatter(option, idx)}")
+
+        selection = input(prompt_hint).strip().lower()
+        if selection in {"q", "quit", "exit"}:
+            raise SystemExit(0)
+        if selection in {"a", "all", "*"}:
+            return list(options)
+        parsed = _parse_multi_selection(selection, len(options))
+        if parsed:
+            return [options[i - 1] for i in parsed]
+        print(f"Invalid selection '{selection}'. Please try again.")
 
 
 def ensure_output_paths(
@@ -321,6 +379,17 @@ async def process_item(
     print(f"Saved summaries to {summary_path}")
 
 
+async def run_selections(
+    course: Dict[str, Any],
+    selections: Sequence[Tuple[Dict[str, Any], Sequence[Dict[str, Any]]]],
+) -> None:
+    for module, items in selections:
+        module_name = module.get("name") or f"Module {module['id']}"
+        print(f"\nProcessing module '{module_name}' ({len(items)} item(s))...")
+        for item in items:
+            await process_item(course, module, item)
+
+
 def main() -> None:
     try:
         print("Loading Canvas courses...")
@@ -340,25 +409,33 @@ def main() -> None:
             print("No modules available in this course.")
             return
 
-        module = prompt_choice(
+        selected_modules = prompt_multi_choice(
             modules,
-            label="module",
+            label="module(s)",
             formatter=lambda m, _: f"{m.get('name', '(no name)')} (id: {m['id']})",
         )
 
-        items = list_module_items(course["id"], module["id"])
-        page_items = [item for item in items if item.get("type") == "Page"]
-        if not page_items:
-            print("No Canvas Page items found in this module; nothing to process.")
+        selections: List[Tuple[Dict[str, Any], List[Dict[str, Any]]]] = []
+        for module in selected_modules:
+            items = list_module_items(course["id"], module["id"])
+            page_items = [item for item in items if item.get("type") == "Page"]
+            module_name = module.get("name", "(no name)")
+            if not page_items:
+                print(f"No Canvas Page items found in module '{module_name}'; skipping.")
+                continue
+
+            selected_items = prompt_multi_choice(
+                page_items,
+                label=f"item(s) in module '{module_name}'",
+                formatter=lambda i, _: f"{i.get('title', '(no title)')} (id: {i['id']})",
+            )
+            selections.append((module, selected_items))
+
+        if not selections:
+            print("No module items selected; nothing to process.")
             return
 
-        item = prompt_choice(
-            page_items,
-            label="module item",
-            formatter=lambda i, _: f"{i.get('title', '(no title)')} (id: {i['id']})",
-        )
-
-        asyncio.run(process_item(course, module, item))
+        asyncio.run(run_selections(course, selections))
     except KeyboardInterrupt:
         print("\nOperation cancelled by user.")
 
