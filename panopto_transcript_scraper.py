@@ -7,13 +7,29 @@ from typing import Dict, List, Union
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 from bs4 import BeautifulSoup
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError, sync_playwright
 
-from backend.playwright_utils import launch_context
-
-
+PROFILE_DIR = Path("edge-profile")  # persists cookies/session across runs
 PANOPTO_URL_RE = re.compile(r"panopto\.com/.+(Viewer|Embed)\.aspx.*", re.I)
 MS_SSO_RE = re.compile(r"(microsoftonline\.com|/adfs/|/sts/)", re.I)
+GOTO_TIMEOUT_MS = 60_000
+CAPTIONS_TIMEOUT_MS = 20_000
+
+
+def _launch_context(pw):
+    return pw.chromium.launch_persistent_context(
+        user_data_dir=str(PROFILE_DIR),
+        channel="msedge",
+        headless=False,
+    )
+
+
+def _close_all_pages(ctx) -> None:
+    for page in list(ctx.pages):
+        try:
+            page.close()
+        except Exception:
+            pass
 
 
 def _extract_captions_from_html(html: str) -> str | None:
@@ -39,53 +55,6 @@ def _ensure_panopto_page(page, ctx):
                 if PANOPTO_URL_RE.search(candidate.url):
                     return candidate
     return page
-
-
-def get_transcript_text(url: str) -> str | None:
-    url = normalize_panopto_url(url)
-    print(f"Opening: {url}")
-    with sync_playwright() as pw:
-        ctx = launch_context(pw)
-        try:
-            page = ctx.new_page()
-            page.goto(url, wait_until="domcontentloaded", timeout=10000)
-            page = _ensure_panopto_page(page, ctx)
-            try:
-                page.wait_for_selector('ul.event-tab-list[aria-label="Captions"]', timeout=10000)
-            except Exception:
-                page.wait_for_load_state("networkidle", timeout=10000)
-            html = page.content()
-            return _extract_captions_from_html(html)
-        finally:
-            ctx.close()
-
-
-def get_transcripts(urls: Union[str, List[str]]) -> Dict[str, str | None]:
-    if isinstance(urls, str):
-        urls = [urls]
-
-    normalized_urls = [normalize_panopto_url(url) for url in urls]
-    results: Dict[str, str | None] = {}
-    with sync_playwright() as pw:
-        ctx = launch_context(pw)
-        try:
-            page = ctx.new_page()
-            for url in normalized_urls:
-                try:
-                    print(f"Opening: {url}")
-                    page.goto(url, wait_until="domcontentloaded", timeout=10000)
-                    page = _ensure_panopto_page(page, ctx)
-                    try:
-                        page.wait_for_selector('ul.event-tab-list[aria-label="Captions"]', timeout=10000)
-                    except Exception:
-                        page.wait_for_load_state("networkidle", timeout=10000)
-                    html = page.content()
-                    results[url] = _extract_captions_from_html(html)
-                except Exception:
-                    results[url] = None
-        finally:
-            ctx.close()
-    return results
 
 
 def normalize_panopto_url(url: str) -> str:
@@ -119,6 +88,93 @@ def normalize_panopto_url(url: str) -> str:
     return url
 
 
+def _ensure_panopto_page(ctx):
+    informed_login = False
+    while True:
+        pages = list(ctx.pages)
+        if not pages:
+            raise RuntimeError(
+                "All browser windows were closed before reaching the Panopto viewer."
+            )
+        for candidate in pages:
+            try:
+                url = candidate.url
+            except Exception:
+                continue
+            if not url:
+                continue
+            if PANOPTO_URL_RE.search(url):
+                return candidate
+        if not informed_login and any(
+            MS_SSO_RE.search(getattr(p, "url", "") or "") for p in pages
+        ):
+            print("Complete Microsoft SSO in the opened window; waiting…")
+            informed_login = True
+        try:
+            pages[0].wait_for_timeout(1000)
+        except Exception:
+            pass
+
+
+def _goto_panopto(page, ctx, url: str):
+    try:
+        page.goto(url, wait_until="domcontentloaded", timeout=GOTO_TIMEOUT_MS)
+    except PlaywrightTimeoutError as exc:
+        raise RuntimeError(f"Timed out loading Panopto page: {url}") from exc
+    page.wait_for_timeout(500)
+    return _ensure_panopto_page(ctx)
+
+
+def _wait_for_captions(page) -> str:
+    try:
+        page.wait_for_selector('ul.event-tab-list[aria-label="Captions"]', timeout=CAPTIONS_TIMEOUT_MS)
+    except PlaywrightTimeoutError as exc:
+        raise RuntimeError("Timed out waiting for Panopto captions panel.") from exc
+    transcript = _extract_captions_from_html(page.content())
+    if not transcript:
+        raise RuntimeError("Panopto transcript was empty.")
+    return transcript
+
+
+def get_transcript_text(url: str) -> str:
+    url = normalize_panopto_url(url)
+    print(f"Opening: {url}")
+    with sync_playwright() as pw:
+        ctx = _launch_context(pw)
+        try:
+            page = ctx.new_page()
+            try:
+                current_page = _goto_panopto(page, ctx, url)
+                transcript = _wait_for_captions(current_page)
+            finally:
+                _close_all_pages(ctx)
+        finally:
+            ctx.close()
+    return transcript
+
+
+def get_transcripts(urls: Union[str, List[str]]) -> Dict[str, str]:
+    if isinstance(urls, str):
+        urls = [urls]
+
+    normalized_urls = [normalize_panopto_url(url) for url in urls]
+    results: Dict[str, str] = {}
+    with sync_playwright() as pw:
+        ctx = _launch_context(pw)
+        try:
+            for url in normalized_urls:
+                print(f"Opening: {url}")
+                page = ctx.new_page()
+                try:
+                    current_page = _goto_panopto(page, ctx, url)
+                    results[url] = _wait_for_captions(current_page)
+                finally:
+                    _close_all_pages(ctx)
+        finally:
+            ctx.close()
+    return results
+
+
 def main() -> None:
     if len(sys.argv) < 2:
         print("Usage: uv run panopto_transcript_scraper.py <panopto_url> [more_urls...]")
@@ -126,14 +182,14 @@ def main() -> None:
 
     urls = [normalize_panopto_url(u) for u in sys.argv[1:]]
     if len(urls) == 1:
-        print(get_transcript_text(urls[0]) or "")
+        print(get_transcript_text(urls[0]))
     else:
         results = get_transcripts(urls)
         for link, text in results.items():
             print("=" * 80)
             print(link)
             print("-" * 80)
-            print(text or "(no transcript)")
+            print(text)
 
 
 if __name__ == "__main__":
