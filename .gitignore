@@ -1,8 +1,11 @@
+<<<<<<< HEAD
 edge-profile/
 auth/
 playwright-state.json
 __pycache__
 settings.json
+=======
+>>>>>>> a0679664a32dd259e4b148464f8c7098943e519f
 edge-profile
 auth/
 playwright-state.json
