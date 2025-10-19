@@ -1,5 +1,6 @@
-edge-profile/
+edge-profile
 auth/
 playwright-state.json
 __pycache__
 settings.json
+.playwright-user-data
