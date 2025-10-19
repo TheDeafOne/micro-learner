@@ -2,57 +2,54 @@
 from __future__ import annotations
 
 import sys
-from pathlib import Path
 from typing import Dict, List, Union
 
 from playwright.sync_api import sync_playwright
 
-PROFILE_DIR = Path("edge-profile")  # persists cookies/session across runs
+from backend.playwright_utils import launch_context
 
 
-def get_transcript_text(url):
+def get_transcript_text(url: str) -> str | None:
     with sync_playwright() as pw:
-        # Use installed Edge, headed (no headless.exe); avoids the firewall block
-        ctx = pw.chromium.launch_persistent_context(
-            user_data_dir=str(PROFILE_DIR),
-            channel="msedge",
-            headless=False,
-        )
-        page = ctx.new_page()
-        page.goto(url, wait_until="domcontentloaded")
-        text = page.locator(".transcript-container").inner_text()
-        ctx.close()
-    return text
+        ctx = launch_context(pw)
+        try:
+            page = ctx.new_page()
+            page.goto(url, wait_until="domcontentloaded", timeout=60_000)
+            page.wait_for_selector(
+                ".transcript-container, .audio-transcript.single-panel",
+                timeout=45_000,
+            )
+            locator = page.locator(
+                ".transcript-container, .audio-transcript.single-panel"
+            ).first
+            return locator.inner_text()
+        except Exception:
+            return None
+        finally:
+            ctx.close()
 
 
-def get_transcripts(urls: Union[str, List[str]]) -> Dict[str, str]:
-    """Open each Zoom link in the same Edge profile and grab transcript text.
-    Returns {url: transcript_text or None}."""
+def get_transcripts(urls: Union[str, List[str]]) -> Dict[str, str | None]:
     if isinstance(urls, str):
         urls = [urls]
 
-    results: Dict[str, str] = {}
+    results: Dict[str, str | None] = {}
     with sync_playwright() as pw:
-        ctx = pw.chromium.launch_persistent_context(
-            user_data_dir=str(PROFILE_DIR),  # existing profile with your SSO
-            channel="msedge",
-            headless=False,
-        )
+        ctx = launch_context(pw)
         try:
             for url in urls:
                 text = None
                 page = ctx.new_page()
                 try:
-                    page.goto(url, wait_until="domcontentloaded",
-                              timeout=60_000)
-                    # Wait for transcript to render; support either container class you’ve seen
+                    page.goto(url, wait_until="domcontentloaded", timeout=60_000)
                     page.wait_for_selector(
                         ".transcript-container, .audio-transcript.single-panel",
-                        timeout=45_000
+                        timeout=45_000,
                     )
-                    text = page.locator(
+                    locator = page.locator(
                         ".transcript-container, .audio-transcript.single-panel"
-                    ).first.inner_text()
+                    ).first
+                    text = locator.inner_text()
                 except Exception:
                     text = None
                 finally:
@@ -63,14 +60,13 @@ def get_transcripts(urls: Union[str, List[str]]) -> Dict[str, str]:
     return results
 
 
-def main():
+def main() -> None:
     if len(sys.argv) < 2:
-        print("Usage: uv run open_zoom_min.py \"<zoom_play_url>\"")
+        print("Usage: uv run zoom_transcript_scraper.py <zoom_play_url>")
         raise SystemExit(2)
 
     url = sys.argv[1]
-
-    print(get_transcript_text(url))
+    print(get_transcript_text(url) or "")
 
 
 if __name__ == "__main__":
