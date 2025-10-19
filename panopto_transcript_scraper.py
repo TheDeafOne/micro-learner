@@ -14,7 +14,6 @@ PROFILE_DIR = Path("edge-profile")  # persists cookies/session across runs
 PANOPTO_URL_RE = re.compile(r"panopto\.com/.+(Viewer|Embed)\.aspx.*", re.I)
 MS_SSO_RE = re.compile(r"(microsoftonline\.com|/adfs/|/sts/)", re.I)
 GOTO_TIMEOUT_MS = 60_000
-SSO_TIMEOUT_MS = 300_000
 CAPTIONS_TIMEOUT_MS = 20_000
 
 
@@ -85,15 +84,29 @@ def _ensure_panopto_page(page, ctx):
         return page
     if MS_SSO_RE.search(page.url):
         print("Complete Microsoft SSO in the opened window; waiting…")
-        try:
-            page.wait_for_url(PANOPTO_URL_RE, timeout=SSO_TIMEOUT_MS)
-            return page
-        except PlaywrightTimeoutError as exc:
+        while True:
             for candidate in ctx.pages:
-                if PANOPTO_URL_RE.search(candidate.url):
+                try:
+                    url = candidate.url
+                except Exception:
+                    continue
+                if url and PANOPTO_URL_RE.search(url):
                     return candidate
-            raise RuntimeError("Timed out waiting for Panopto viewer after SSO.") from exc
-    raise RuntimeError(f"Did not reach a Panopto viewer page (current URL: {page.url}).")
+            if page.is_closed():
+                break
+            page.wait_for_timeout(1000)
+            try:
+                current_url = page.url
+            except Exception:
+                current_url = ""
+            if current_url and PANOPTO_URL_RE.search(current_url):
+                return page
+        raise RuntimeError(
+            "The authentication window closed before reaching the Panopto viewer."
+        )
+    raise RuntimeError(
+        "Did not reach a Panopto viewer page. If login is required, complete it in the opened browser window."
+    )
 
 
 def _goto_panopto(page, ctx, url: str):
