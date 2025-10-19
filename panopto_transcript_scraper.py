@@ -118,6 +118,33 @@ def _ensure_panopto_page(ctx):
             pass
 
 
+# Add this near your constants
+CAPTIONS_TAB_SELECTOR = "#transcriptTabHeader, div.event-tab-header[aria-controls='transcriptTabPane'], [role='tab'][aria-controls='transcriptTabPane']"
+
+
+# Add this helper
+def _open_captions_tab(page) -> None:
+    """
+    Ensure the 'Captions' tab is selected. If the tab exists but isn't selected, click it.
+    """
+    try:
+        # Wait for the captions tab to be present in the DOM
+        page.wait_for_selector(CAPTIONS_TAB_SELECTOR, timeout=CAPTIONS_TIMEOUT_MS)
+    except PlaywrightTimeoutError as exc:
+        raise RuntimeError("Could not find the Panopto 'Captions' tab.") from exc
+
+    header = page.query_selector(CAPTIONS_TAB_SELECTOR)
+    if not header:
+        raise RuntimeError("The 'Captions' tab header was not found after it appeared.")
+
+    # Click only if not already selected
+    aria_selected = header.get_attribute("aria-selected")
+    if aria_selected != "true":
+        header.click()
+        # Tiny pause to allow panel to render
+        page.wait_for_timeout(250)
+
+
 def _goto_panopto(page, ctx, url: str):
     try:
         page.goto(url, wait_until="domcontentloaded", timeout=GOTO_TIMEOUT_MS)
@@ -127,13 +154,19 @@ def _goto_panopto(page, ctx, url: str):
     return _ensure_panopto_page(ctx)
 
 
+# Replace your existing _wait_for_captions with this version
 def _wait_for_captions(page) -> str:
+    # NEW: open the Captions tab before waiting for the list
+    _open_captions_tab(page)
+
     try:
         page.wait_for_selector(
-            'ul.event-tab-list[aria-label="Captions"]', timeout=CAPTIONS_TIMEOUT_MS
+            'ul.event-tab-list[aria-label="Captions"]',
+            timeout=CAPTIONS_TIMEOUT_MS,
         )
     except PlaywrightTimeoutError as exc:
         raise RuntimeError("Timed out waiting for Panopto captions panel.") from exc
+
     transcript = _extract_captions_from_html(page.content())
     if not transcript:
         raise RuntimeError("Panopto transcript was empty.")
