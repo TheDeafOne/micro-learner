@@ -1,0 +1,629 @@
+## Transcript 1 (panopto)
+Source: https://jh.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=2b756a68-4b30-4141-a58e-b0c500c4e619
+
+Certain problems require
+actual numerical values to be computed,
+such as when predicting the arrival rate of
+the seasonal flu or
+the probable index of
+the stock market in the following week.
+Such problems can be
+solved by the use of regression.
+In this module, we will
+list regression types, analytically
+solve the linear regression equation,
+define its cost function,
+and demonstrate when linear regression
+can be confusing or non-working.
+Further, we will code and
+demonstrate quadratic regression and
+logistic regression from scratch
+using polynomial features
+and scipy optimizers.
+One of the popular classification methods,
+logistic regression,
+is based on the logistic curve fitting
+on dataset feature log odds.
+We will utilize logistic
+regression classifier to develop
+a predictive model which can
+predict the recurrence of cancer.
+Given patient diagnosis data.
+
+## Transcript 2 (panopto)
+Source: https://jh.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=b82cd6c8-6f1f-4a39-8ae2-b0c300f1896d
+
+Dear students. In the previous modules,
+we have seen supervised learning
+where the output was a categorical outputs.
+We were trying to predict if
+the output would be class A or B,
+or in a multiple categorical version,
+Class A, B, C, D, or E.
+Now imagine we want to predict
+the actual value of the output, e.g.
+house prices, stock markets, average age.
+We cannot categorize the
+dependent variable beforehand.
+We do not want to divide the space into two,
+binary class zero and
+binary class one, but rather,
+we want to keep the dependent variable to
+be able to have a trend like
+a mathematical extrapolation without
+specifying a region in the variable space.
+In historical analytical solutions
+for economics or similar application fields,
+regression was the main tool rather than
+categorical distinction
+using a particular classifier.
+Now how can we do regression?
+We can have linear regression where
+the input independent
+variable is single-dimensional.
+X is element of R,
+in this case are
+multiple linear regression where
+x is element of R m.
+And that is very typical for
+our classification problems
+or machine learning problems,
+where we have m features
+or multivariate linear regression,
+where the dependent variable y
+has a dimension greater than one.
+This is out of our scope.
+We will focus on the linear and
+multiple linear regression in this module.
+Now, this problem behaves nicely.
+It's a linear line,
+y equals b zero plus b1 x
+that we want to fit to our data.
+There is a direct solution to
+that optimization problem where
+the cost is L2.
+L2, meaning we take the square of
+the error and then sum up
+L1 would be the absolute value of it.
+There is no direct solution for that.
+But when we use our cost function as this,
+there is a direct solution
+that we will apply.
+In this cell
+we have some candidate data.
+Input y is your dependent variable.
+Input x is your independent feature,
+single-dimensional.
+It behaves like this. In a perceptron
+We would fit, fit a line in between if we
+knew these y's are 0 and 1 e.g.
+so it's a classification problem
+when we try to divide the space into two.
+But in a regression problem,
+we want to fit a line or a curve to this,
+let's say behavior of the variables.
+If we want to fit a line,
+it is linear regression.
+And here a line is
+fitted using this solution.
+And in the second,
+in the third plot, we computed the residues,
+each of the error between the
+actual and the predicted value,
+and then computed the total error here,
+and then annotated it.
+We can find out
+the new y for the new x using this line, e.g.
+if I receive X S5 then
+the predicted y would
+be somewhere around 2.75.
+I can compute that value using this line.
+I've already computed b0 and b1,
+so I know the line.
+Okay? How does it compare to other methods?
+What are the advantages of regression?
+What are the disadvantages of regression?
+Advantages, it's obvious.
+We have real values.
+We have actual values.
+Using this model.
+There's no category.
+If you want to apply
+linear regression to
+a particular classification problem,
+it's possible, it's
+called logistic regression, e.g.
+we will see that momentarily.
+However, we have to
+modify the problem a bit differently.
+As you see, there's no class here,
+only the y-variables.
+I do not know if y equals three,
+is class two or not.
+I do not know if input y when
+it's 0.5 is class one or not,
+because I do not have that information.
+However, I have the y values and then
+I'm fitting x, y values align.
+In this case, the
+disadvantages of the regression
+as in the following example
+from pretty early times,
+Anscombe's quartet is analyzed
+to see if a linear regression
+is a good model or not.
+E.g. these four sets of
+variables have these linear regression lines.
+Notice something?
+These lines are exactly the same
+because the data is fit to the line.
+Accordingly.
+All of their mean and
+standard deviation are same.
+So the statistical properties of
+these four sets are
+same their behavior is very different.
+In this case, It's like a regular data.
+In this case, it's quadratic.
+In this case, it is line,
+but there's an outlier.
+In this case, it is again a line,
+but there's an outlier.
+If I can get rid of these two outliers,
+the first-line would be
+close to the regression line.
+The second line would be totally different.
+Now, clearly,
+without looking at the second, third,
+moments, statistical moments,
+we cannot say if this is a good fit or not.
+We compute the residues.
+But then again, the residues
+might be very close.
+Thus, we have four different measures.
+Mean absolute error, squared error,
+mean absolute percentage error.
+And mean percentage error
+defined as in these metrics.
+When we compute these metrics
+for the above input data,
+we have these outputs,
+MAE are varying, MSE
+incredibly close mean squared error.
+Well, of course, because
+the data is set accordingly,
+its mean and standard deviation are saying,
+we cannot use MSE to differentiate
+between these four models.
+Mape are very different.
+E.g. I. Can see a clear distinction
+on the third one compared to the 1, 2 and 4
+MAPE  is also different for the second one.
+And MAE actually gives
+a good indication that these are different.
+The best one is the second one,
+the worst one is the third one.
+Let's see.
+The best one is the second one
+and the worst one is the third one.
+But it's not worse for the fourth one, 0.9.
+So the best strategy
+is looking at all these metrics.
+Looking at visually adding
+more metrics for
+a second moment,
+third moment or fourth moment.
+Then deciding on.
+We can also do some outlier analysis.
+Look at the differences
+between the centroids and
+the actual data points.
+If I cluster e.g.
+this one would cluster
+nicely on this ellipsoid.
+This would be a second cluster.
+This one would cluster
+nicely, again, an ellipsoid.
+This will be an outlier,
+this would not cluster, this would not cluster.
+But then my absolute error
+and squared error gives us an indication.
+Now, let's see logistic regression
+in the following video.
+
+## Transcript 3 (panopto)
+Source: https://jh.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=d9ed6910-c377-4ec9-b21f-b0c10024b83e
+
+Regression is a curve fit to the data.
+Logistic regression was invented
+when researchers and engineers
+wanted to apply the curve fit
+to a probabilistic variable.
+A dichotomy, drawing values zero or one.
+A linear regression cannot be
+used when the acceptable range is 0 and 1
+because the linear regression line
+Can extrapolate in either direction.
+However, a sigmoid function
+would work much better.
+You remember the sigmoid line,
+sigmoid function from neural networks,
+or we will see that in
+the following modules and
+also in the following cell,
+we showed that a linear regression,
+quadratic regression,
+and the sigmoid regression
+or logistic regression differences.
+Now, in this example,
+our variables are set as in this plot.
+The x values go 0-1 and the y values,
+like a probability, takes
+value from the set of 0 and 1.
+Imagine.
+I'm not using
+probability density functions in,
+like in Naive Bayes,
+but I'm collecting the probabilities
+and now fitting a curve to that.
+Why am I fitting a curve?
+Because I can deal with missing data.
+I'm not fitting a particular Gaussian curve
+is in the Naive Bayes example.
+But I'm fitting a curve
+directly into the probabilistic values,
+in this case a logistic regression.
+This particular cell also
+demonstrates the polynomial features, e.g.
+if I fit a linear regression to
+this data, it's not that good.
+I'm not covering these input values
+where it takes numbers 0 to 0.5,
+here, 1 to 1.5.
+Of course this can be anything.
+This is, this x axis is your feature.
+It can be anything or we can scale it to 0 and 1.
+However, the y probabilistic is a variable.
+It takes values from 0 and 1 set.
+So there's a probability associated to that.
+If I fit a line
+directly using linear regression,
+the line is like this.
+Quadratic regression.
+Well, not bad.
+If I increase the degree to
+seven, it fits better.
+e.g. I
+Can change it there very easily.
+We are using the methods directly from
+the sklearn Linear Model.
+For polynomial features,
+I have to convert the
+input features to polynomial features.
+I'm adding more columns,
+as in this equation.
+Since degrees 3, I set it myself,
+the equation is one plus three degrees.
+If this was seven,
+it would be one plus seven more variables,
+depending on the axis.
+x to the one, x to the two,
+x to the three, x to the
+four, goes like that.
+Now, let's increase that degree to seven.
+And then rerun this.
+I have to rerun the whole notebook.
+Of course, I have not
+included the libraries when
+I download this notebook on my machine,
+the output is there,
+but the libraries are not important.
+And then I'm running this.
+You see, it's not degree three,
+of course, I set it to degree seven now.
+And it is a better fit,
+but still there are ripples.
+If I fit a logistic regression to this,
+it will be behaving like a sigmoid function.
+I do not have to code
+anything in the previous cells
+I coded the linear regression,
+but not in this cell.
+We have linear regression
+polynomial features for the
+quadratic and for the sigmoid,
+I have the function.
+The sigmoid function is scaled
+by a and shifted by b.
+Those are two parameters to be optimized.
+And then I fit a curve
+using the sigmoid function.
+And my input and output
+variables are x and y.
+This curve fit from optimization
+uses an internally
+selected optimization function.
+And then it will find out the a and b for me,
+any variable after the x
+or the set of variables to be optimized.
+If I have A, B, C, D,
+E, I have five parameters to be optimized.
+This curve fit the return
+those five optimized parameters
+in the pop t. Thus,
+I'm using my sigmoids.
+Why predictions?
+Using that sigmoid function
+and passing those parameters.
+In this case two, a and b.
+This is a tuple. When I call it with star tuple,
+it opens up each of the value inside it.
+So in this fashion,
+my length of the tuple is variable.
+If there are five parameters, ABCDE,
+this pop t will have
+five values to be passed through the Sigmoid.
+There's one unfortunate variable format,
+the linear regression and
+the polynomial and linear
+regression uses X as 2D arrays,
+and then it needs a column vector.
+However, the cure fit,
+it uses an array,
+a single-dimensional numpy vector,
+let's say. Here.
+This is building np concatenate linear space.
+Linear space.
+This is building a 1D vector with ten values.
+New axis adds
+the second dimension of size one,
+and then it takes the transpose of it.
+Similarly, y is treated accordingly.
+The best way to check how these work is
+to create a cell after this cell, e.g.
+and look what I have.
+X is this two-dimensional array.
+How do I know because of
+these two square brackets around it,
+and it's a column vector.
+My original x was only this,
+the combination of this much.
+If I run that, it's a single array.
+So these linear regression library functions,
+they do not like this format directly.
+How do I know - reading the APIs?
+Unfortunately, there's no other way.
+It's someone else's program.
+These library functions.
+I have to learn them by using the APIs,
+the documentation,
+reading, and then trial and error.
+If I pass this particular x
+to the curve fit here,
+it doesn't like it.
+So I take it back to the original form.
+Let's create another cell and compare.
+You see x ravel is same as
+my original array without
+those 2D and column transformations.
+Still, these are
+incredibly powerful library functions
+that I want to use.
+The logistic regression fits
+nicely to the probalistic variables.
+How do I use it as a classifier?
+
+## Transcript 4 (panopto)
+Source: https://jh.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=4103997d-1cea-4ea8-8537-b0c400a18e5b
+
+Previously, we have
+seen other classifiers for
+supervised learning such as random forests,
+Naive Bayes, SVM, neural networks.
+But logistic regression is also
+a very powerful classifier based on
+regression and the input probabilities.
+How do we use it as a classifier?
+We will demonstrate with
+a particular datasets.
+Now, if I know that I cannot fit
+a particular probability density function
+than logistic regression is a good candidate.
+It solves an optimization problem to fit
+a sigmoid Bayes logistic curve to the data.
+And the data is probabilistic.
+It is transformed
+into probabilistic representation.
+You see support vector machines, e.g.
+are distance-based.
+We do not care about
+any probability distribution.
+Now you base is pure problems sick.
+We assume the features
+are based on Gaussian distribution.
+Logistic regression is in-between.
+We assume there are some problems,
+thick features,
+but we do not assume
+anything about that probability.
+Rather, with fit curve into
+that problem seq
+data and logistic regression.
+That's why it's very powerful
+because it doesn't assume anything.
+Today.
+We do not assume anything about
+the underlying distribution
+because we cannot,
+because we will never know the reality.
+Thus, not assuming anything is
+a winning strategy when
+it comes to classify pick.
+In this case, they're
+using module seven, breast cancer data.
+It is similar to the data in module three.
+Without the erroneous data rows,
+we compare everything to
+a probability in terms of features.
+And of course it's a binary classifier.
+Saw If feature value x
+is for class zero, is p.
+If it is for class one,
+Dan it's one minus p.
+We take the logarithm of those probabilities,
+which are called logit,
+log odds, and then fit a curve accordingly.
+We will not focus on the details
+of the implementation of
+a logistic regression classifier.
+But we will use directly from
+the library scikit-learn as
+linear model logistic regression.
+Now, these cells show pre-processing of
+that particular dataset a
+bit differently from Module three.
+First thing we do is explore the data.
+We load the data into our DataFrame.
+Pandas is very powerful.
+We look at the data.
+There are numerical variables, age,
+there are categorical variables
+like menopause, Numerical. Numerical.
+We have binary variables.
+Yes, No. We have to
+convert everything to numbers.
+Of course, for the categorical ones,
+we will convert using one-hot encoding.
+I know that recurrence is
+the dependent variable by looking at
+the patient's diagnosis parameters,
+I'm trying to predict
+the recurrence of the cancer.
+Does it recur or not?
+So the first thing we are
+checking if we have
+any nans or question marks.
+Question mark can be for some categorical,
+Nan can be for numerical.
+And of course, the object
+represents the string, right?
+For each of the menopause node, caps, breast,
+breast quad, irradiation will
+be objects because they are string values.
+I will drop the question marks and finance,
+and uncheck how many rows
+and columns we have.
+Of course we have ten columns.
+We have not done one hot encoding yet,
+and we have 286 at the beginning to 77.
+Now we dropped some,
+some rows, convert everything to numeric.
+This particular function creates
+the names in a well-mannered fashion
+so that I will know,
+like this, menopause, greater than 40,
+menopause less than 40.
+One-hot encoded.
+Take the variable name,
+add the category,
+and then build the one-hot encoding.
+So after two numeric in this fashion,
+I still have everything at my disposal.
+I mean, I can see
+the actual variables by looking
+at this because I kept the variable names,
+the category in the name.
+So I know gp41
+one in these two data rows and our zeros,
+zeros on the other column.
+Of course, the one-hot encoded variables,
+123, menopause will be mutually exclusive.
+Clearly, I created the dataset, recurrence.
+Will be handled separately,
+of course, because it's a dependent variable.
+The first thing I'm doing is
+checking if the problem is balanced or not.
+Ideally, I would have
+50 per cent no recurrence,
+50 per cent recurrence.
+In this case, it is like toward
+the 70, not that bad.
+But if this was like 99 versus one,
+it will be a very difficult problem.
+I wouldn't use accuracy directly.
+I would use F1 score on the small category,
+like recur with 1%.
+In this problem, I could use
+F1 score as well on the recurrence events.
+But I didn't.
+We are using regular
+cross validation and accuracy,
+which is okay, It's almost balanced.
+Now the rest is the classifier,
+ten per cent Claude cross-fold.
+If you remember, our accuracy
+was around 70 per cent in module three,
+we didn't improve upon that.
+However, they're using logistic regression
+to demonstrate more things like e.g.
+ranking the variables, we can
+rank the variables by looking
+at the residuals in the curve fit.
+These cells demonstrates the
+first one demonstrates the accuracy.
+The second one demonstrates the gain of the,
+each of the feature.
+I'm sure if we show this to a particle
+or subject matter experts from
+cancer treatments,
+degree malignant would be immediately
+known to the subject matter experts
+and the tumor size.
+Those probably are
+the two and the inverted nodes.
+Three most important features to
+tell about the status of a cancer patient.
+Now, how would we use this model
+that we trained for unknown data?
+We have to build the data accordingly.
+In this case, we built two new data points.
+In this fashion.
+I created a new DataFrame.
+I have two data points and
+I'm passing it as a DataFrame.
+And of course this is in
+the original format for
+the subject matter expert.
+The original format is important,
+not the one one-hot encoded,
+which was prepared for
+particularly the logistic regression library.
+So I built this made-up data points.
+There are two data points in this fashion.
+I do not know which one will have
+a cure or no recur depending on our model.
+The first thing, of course,
+we convert this to the models format.
+The model was one-hot encoded.
+We did that.
+And then we check the predict.
+This whole line takes
+the values predicted inverse transform
+because I encoded with
+the label encoder and then print the results.
+So that shows me the first
+data points is no recurring.
+The second data point is recurring.
+You see the degree malignant, it's 15 here.
+I bet if I increase this 4-10,
+the first one will be recorded as well.
+That was the most important
+feature is ranked here.
+If one analyzes this whole pipeline,
+it includes almost everything.
+This is supervised learning pipeline,
+of course,
+using logistic regression and
+regression at the core
+of the learning methods.
+That's all for this module.
