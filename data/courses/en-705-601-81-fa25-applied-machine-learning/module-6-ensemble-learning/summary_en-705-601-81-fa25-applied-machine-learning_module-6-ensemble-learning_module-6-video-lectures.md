@@ -2,116 +2,111 @@
 
 ## https://jh.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=21c73759-fb0e-4a8c-a1c4-b0c60021a466
 
-# Lecture summary
+# Summary
 
-- Ensembles of many weak classifiers trained on random subsets of features can improve supervised learning.
-- Weak learners have limited capacity; diversity is created by using different feature subsets and randomness.
-- Aggregation by majority voting leverages the sheer number of weak classifiers to reduce error, increase robustness, and often outperform single complex classifiers.
-- Random forest is a prime example: an ensemble of weak decision trees.
-- Decision tree classifiers and their visualizations are used to illustrate how weak learners operate.
-- Using fewer features per weak classifier increases diversity; combined (voted) predictions typically surpass individual classifier performance.
+- Ensembles of many weak classifiers that each use limited subsets of features improve supervised learning performance and robustness.
+- Individual classifiers are intentionally simple/limited; their sheer number and majority voting combine strengths and reduce errors.
+- Random forest is a top ensemble method built from weak decision tree classifiers.
+- Decision tree classifiers and their visualizations are central to understanding and building such ensembles.
+- Combining many weak classifiers that each use fewer features and limited learning capability yields aggregate performance that often surpasses individual classifiers.
 
 ## https://jh.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=4e3c5980-6e76-4826-90d1-b0c50151eccc
 
-# Summary — Ensemble learning & random forests
+# Summary — Ensemble Learning & Random Forests
 
-- Ensemble learning: combine many weak learners (hundreds or thousands) to form a stronger, more robust classifier. Ensembles often generalize better and reduce overfitting compared to single complex models.
-
-- Ways to build ensembles:
-  - Bagging (bootstrap aggregating): train weak learners on different subsets of data points.
-  - Feature subsampling: train learners on different subsets of features (used in random forests).
-  - Boosting (iterative reweighting of samples) — mentioned as another ensemble approach.
-
-- Why ensembles help:
-  - Parallelizable — learners can be trained/evaluated in parallel for speed.
-  - Increased robustness and generalization through diversity among learners.
-  - Mitigates curse of dimensionality by training learners on feature subsets rather than the full joint feature space (example: with many features, using subsets avoids needing an exhaustive joint density).
-
+- Ensemble learning builds a strong classifier by combining many weaker learners (hundreds to thousands), improving robustness and generalization compared with a single complex classifier.
+- Ensembles can run learners in parallel (faster inference) and reduce overfitting by aggregating diverse, more abstract weak learners.
+- Two common ensemble techniques:
+  - Bagging (bootstrap aggregating): use different subsets of data points for each learner.
+  - Feature subsetting (used in random forests): use different subsets of features for each learner.
+- Curse of dimensionality motivation: high-dimensional spaces require prohibitive amounts of data to estimate joint densities; training weak learners on feature subsets alleviates this.
+- Aggregation method: majority voting (or similar) over weak learners’ predictions produces the final decision.
 - Random forest specifics:
-  - Ensemble of decision trees, each trained on a bootstrap sample of data and a random subset of features.
-  - Common heuristic: use sqrt(m) features (where m = total number of features) per tree.
-  - Final prediction by majority voting (classification) or averaging (regression).
-  - Low sensitivity to hyperparameters; reasonable defaults (e.g., shallow trees, 200–500 trees, sqrt(m) features) often produce strong results.
-  - Few parameters to tune, making random forests widely useful and robust.
-
-- Implementation note: each tree is built using standard decision tree construction on its sampled data/features; the ensemble aggregates their outputs.
+  - Base learners are decision trees built with bootstrap samples and feature subsets.
+  - Typical heuristic: use sqrt(m) features per split (m = total number of features).
+  - Ensemble size (number of trees) must be chosen, but predictions are not highly sensitive to this; common defaults work well (e.g., shallow trees of limited depth, a few hundred trees like 200–500).
+  - Few hyperparameters and low sensitivity make random forests robust and popular.
+- Decision tree learning (built with standard decision tree algorithms) is the core building block for random forests.
 
 ## https://jh.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=79344ce4-bbc6-4783-a458-b0c600755943
 
-# Decision tree classifier — concise summary
+# Decision Trees — Summary
 
-- Purpose and advantages
-  - Decision trees are interpretable classifiers (not black-box like SVMs or neural nets).
-  - They form the base learners in ensemble methods such as random forests.
-  - Useful for communicating models to subject-matter experts because the split rules are explicit.
+- Role and motivation
+  - Decision trees are interpretable classifiers and the base learners for random forests.
+  - They are not black boxes, enabling direct communication with subject-matter experts.
 
 - Data and encoding
-  - Categorical feature levels can be mapped to ordinal integers when a natural order exists (e.g., food: bad=0, okay=1, good=2).
-  - Binary targets (e.g., tip: yes/no → 1/0) can be encoded with label encoders; one-hot encoding is not required when order/relation exists.
-  - Real datasets may contain conflicting rows; this only affects conditional class probabilities, not the ability to build a tree.
+  - Categorical levels with natural ordering (e.g., bad, okay, good) can be label-encoded (0,1,2) instead of one-hot encoding when order matters.
+  - Conflicting rows in the dataset change conditional probabilities; trees model those probabilities rather than deterministic rules.
 
-- Building and visualizing trees (scikit-learn)
-  - Fit a DecisionTreeClassifier on X (features) and y (labels) using scikit-learn.
-  - Use export_graphviz to export the learned tree to DOT (graph description language) format and render with Graphviz (installable via conda).
-  - The exported visualization shows feature names, class names, split thresholds, node impurity (Gini/entropy), sample counts and class distributions.
+- Building and using trees (scikit-learn)
+  - DataFrame → label encoding → X (features) and y (targets) → fit DecisionTreeClassifier.
+  - Export and visualize trees using export_graphviz to produce DOT files (Graphviz) for plotting.
+  - Feature names and class names can be included in the exported graph for readable visualizations.
 
-- Example outcomes
-  - A learned tree reproduces human-readable rules (e.g., "if food is bad/okay → no tip; if food is good then check speed/price → yes/no").
-  - Applied to standard datasets (e.g., Iris), the tree yields specific thresholds (e.g., petal width cutoff) and node impurities reflecting split quality.
+- Visualization and interpretation
+  - Tree nodes show splits (feature threshold), class predictions, and impurity metrics.
+  - Example: food > 1.5 (good) leads to different tip outcomes than food ≤ 1.5 (bad/okay).
+  - Visual trees are useful for sharing results and eliciting domain knowledge (e.g., “petal width < 1.75 implies versicolor”).
 
 - Impurity measures and feature importance
-  - Node impurity measured by entropy or Gini index; these decrease as the tree partitions the data.
-  - The algorithm chooses splits that maximize impurity reduction; features producing the largest decrease are ranked more important.
+  - Gini index and entropy quantify node impurity; values decrease as the tree makes informative splits.
+  - The algorithm selects splits that reduce impurity most — higher impurity reduction signals more important features (e.g., petal width being most informative in Iris).
 
 - Algorithms and complexity
-  - ID3 and similar algorithms evaluate candidate splits using impurity criteria rather than exhaustive truth-table enumeration.
-  - Exhaustive search over all feature/value combinations grows exponentially with the number of features; impurity-based heuristics make training tractable.
-  - Training uses greedy optimization (choose best split at each node) and follows Occam’s razor by favoring simpler trees (fewer splits) that reduce impurity early.
+  - ID3 (and similar algorithms) search over feature/value splits; exhaustive search grows combinatorially with features.
+  - Practical algorithms use greedy heuristics to choose splits and are therefore fast in practice.
+  - Occam’s razor principle: prefer simpler trees that achieve large impurity reductions near the root.
 
-- Practical note
-  - Visual, rule-based trees aid model interpretation and collaboration; the remaining algorithmic details (pruning, splitting criteria variants, stopping rules) can be studied as extensions.
+- Practical notes
+  - Trees learned from data reflect the training model and may not have perfect reclassification accuracy.
+  - Exported tree visualizations and impurity/threshold annotations make model decisions transparent and actionable.
 
 ## https://jh.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=53b4ba84-3ae3-4606-83db-b0c60178631e
 
-# Summary
-
 - Dataset
-  - Titanic preprocessed dataset: 891 rows, mostly binary/categorical features plus numerical features like age and fare.
-  - Class imbalance: ~61% not survived, ~38% survived.
-  - Exploratory insights: higher survival for females and first-class passengers; fare correlates strongly with survival; age shows nonmonotonic effects (babies more likely to survive).
+  - Preprocessed Titanic data: 891 rows, mostly binary features plus numeric age and fare. Class label: survived (imbalanced: ~38% survived, ~61% not survived).
+  - Initial data exploration showed expected patterns: higher survival for females and certain fare/class ranges; age effects (children/babies survive more).
 
-- Experimental setup / implementation details
-  - Models evaluated with 10-fold cross-validation; mean accuracy and standard deviation recorded.
-  - Weak-learner ensemble implementation:
-    - Use Gaussian Naive Bayes as the primitive (weak) learner.
-    - For each ensemble member: randomly select a subset of features (without replacement), train a Naive Bayes, store that classifier and its feature list.
-    - For prediction: each weak learner predicts on its feature subset; final class by majority voting.
-    - Parameters varied: ensemble size (hundreds), number of features per weak learner, number of repetitions for statistics.
+- Baseline classifiers and evaluation
+  - Ten-fold cross-validation used throughout; mean accuracy and standard deviation reported.
+  - Gaussian Naive Bayes baseline: ~45% accuracy (high variance).
+  - Other classifiers on full data: linear SVC ~80%, balanced SVC ~74%, RBF SVC 66–73% (parameter dependent), logistic regression ~81%, neural network ~84% (best).
+  - Priors for Naive Bayes were computed and used to help balance class effects.
 
-- Individual classifier results (examples)
-  - Gaussian Naive Bayes (full features): ~45% mean accuracy (high variance).
-  - Linear SVC: ~74–80% depending on settings.
-  - Logistic Regression: ~81%.
-  - Neural network: ~84%.
-  - Random forest consistently high due to built-in feature selection (information gain / Gini).
+- Ensemble of weak learners (Naive Bayes)
+  - Weak learners: Gaussian Naive Bayes trained on random subsets of features (feature subsets chosen without replacement).
+  - Ensemble construction:
+    - Generate ensemble_columns: a list of feature lists (one list per weak learner).
+    - Fit each weak learner on the training folds using its assigned feature subset; store classifier + feature-list mapping.
+    - Prediction by majority vote across weak learners for each sample.
+  - Parameters experimented with: ensemble size (e.g., 100–200 weak learners), number of features per weak learner (e.g., 3–11), and multiple iterations (e.g., 10) to collect statistics.
 
-- Ensemble of Naive Bayes weak learners (observations)
-  - Naive Bayes weak-learner ensembles can perform worse if many weak learners lack access to informative features: examples showed ensemble accuracy dropping (e.g., ~39%) with many irrelevant features and many weak learners.
-  - Individual weak learners showed large variance when using random small feature subsets (some succeed by chance, many fail).
-  - Plain Naive Bayes using all features can outperform a poorly constructed Naive Bayes ensemble because it benefits from aggregating all informative features.
+- Problems observed with naive Bayes ensembles on raw data
+  - Simple ensemble of Naive Bayes weak learners often performed worse or only slightly better than single Naive Bayes (examples: NB 45% → ensemble ~48% with large std; in some runs ensemble dropped to ~39%).
+  - Cause: many weak learners randomly miss the informative features; Naive Bayes treats features equally and cannot internally select or down-weight useless features like decision trees do.
 
-- Feature ranking / reduction
-  - Correlation-based ranking with the class used to remove low-correlation features (simple thresholding).
-  - Reducing to top ~25 features markedly improved Naive Bayes performance.
-  - Results after reduction:
-    - Plain Naive Bayes (reduced features): ~76% accuracy.
-    - Ensemble Naive Bayes (using ranked-reduced features; ensemble size ~211): ~78% accuracy with lower standard deviation.
-  - Varying number of features showed:
-    - Plain Naive Bayes is highly sensitive to which features are included (high variance).
-    - Ensemble Naive Bayes is more robust/insensitive: performance plateaus after ~15 features and maintains lower variance.
+- Feature ranking and reduction
+  - Used correlation of each feature with class label to rank features.
+  - Removed weakly correlated features (simple thresholding), reducing to 25 features from the full set.
+  - On reduced feature set:
+    - Single Naive Bayes jumped to ~76% accuracy (low std).
+    - Ensemble of Naive Bayes improved further to ~78% (lower standard deviation than single NB), showing better robustness.
 
-- Conclusions / takeaways
-  - Ensembles of weak learners can improve generalization and reduce variance, but success depends on the weak learner's ability to work with randomly sampled feature subsets.
-  - Naive Bayes weak learners are vulnerable to irrelevant/useless features; ensembles of such weak learners require careful feature ranking/reduction to be effective.
-  - Decision-tree-based ensembles (e.g., random forest) are more robust to irrelevant features because trees perform implicit feature selection during training.
-  - Combining feature ranking with ensembles yields better and more stable performance than either naive ensembles or plain Naive Bayes on unfiltered features.
+- Systematic experiment: varying number of features
+  - Ran experiments varying number of top-ranked features used (from few up to 35) comparing plain Naive Bayes vs ensemble Naive Bayes.
+  - Findings:
+    - Plain Naive Bayes accuracy is sensitive to which features are included; performance fluctuates and has higher variance.
+    - Ensemble Naive Bayes is more robust to number of features, plateaus after ~15 top features and maintains stable performance and lower variance.
+    - Ensembles reduce error variance (tighter std bands) and generalize better even if maximum accuracy is not the absolute highest.
+
+- Comparisons and interpretation
+  - Random Forests (decision-tree based ensembles) were less impacted by irrelevant features because individual trees select informative splits (information gain/Gini), so they naturally handle bad features better than Naive Bayes weak learners.
+  - For weak learners that cannot internally select features (like Naive Bayes), external feature ranking/reduction is crucial before ensembling.
+
+- Conclusions
+  - Ensembles of weak learners can significantly improve generalization and reduce variance, but effectiveness depends on:
+    - The base learner’s ability to handle irrelevant features.
+    - Feature selection/ranking when base learners are feature-insensitive.
+  - With proper feature reduction, an ensemble of Naive Bayes classifiers yields robust performance gains and lower standard deviation compared to single Naive Bayes.
