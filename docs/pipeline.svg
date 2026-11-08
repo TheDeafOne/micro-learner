@@ -28,6 +28,6 @@
     <path d="M1062 323v35H40" fill="none" stroke="#849b91" stroke-width="1.5" stroke-dasharray="6 5"/>
     <text x="40" y="394" font-size="18" font-weight="700">Prepared for a separate LLM wiki or RAG workflow</text>
     <text x="40" y="424" font-size="16" fill="#53666b">The repository collects and summarizes material; it does not implement retrieval or question answering.</text>
-    <text x="40" y="456" font-size="14" fill="#53666b">Workflow illustration based on the implementation, not an application screenshot.</text>
+    <text x="40" y="456" font-size="14" fill="#53666b">Canvas modules, recording captions, and source-linked study notes.</text>
   </g>
 </svg>

@@ -4,7 +4,7 @@ micro-learner collects lecture transcripts from Canvas-linked recordings and tur
 
 ![Canvas pages lead to recording transcripts, summaries, and course-organized Markdown files](docs/pipeline.svg)
 
-*Diagram of the implemented workflow, not an application screenshot.*
+*From Canvas modules to transcripts, summaries, and source-linked Markdown notes.*
 
 ## Motivation
 
@@ -31,7 +31,7 @@ The repository includes an existing [ensemble-learning transcript](data/courses/
 
 Output is written below `data/courses/<course>/<module>/`. Each selected page gets a `transcript_*.md` file and, when transcripts are available, a `summary_*.md` file. Both retain the recording URLs as section headings.
 
-The current workflow prepares existing video captions for a separate wiki or retrieval system. Generated summaries are a starting point for study, with the transcript and source recording available for checking details.
+The workflow prepares video captions for wiki and retrieval systems, keeping each summary linked to its transcript and source recording.
 
 ## Quick start
 
