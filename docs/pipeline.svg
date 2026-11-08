@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="480" viewBox="0 0 1200 480" role="img" aria-labelledby="title desc">
   <title id="title">From Canvas recordings to organized study notes</title>
-  <desc id="desc">Canvas pages link to Panopto or Zoom recordings. Existing captions become source-linked transcripts, LLM summaries, and Markdown files organized by course and module. A separate downstream wiki or retrieval system is outside the implementation.</desc>
+  <desc id="desc">Canvas pages link to Panopto or Zoom recordings. Captions become source-linked transcripts, LLM summaries, and Markdown files organized by course and module for wiki and retrieval workflows.</desc>
   <defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#53666b"/></marker></defs>
   <rect width="1200" height="480" rx="16" fill="#f5f8f5"/>
   <g font-family="Arial, sans-serif" fill="#213b3c">
@@ -21,13 +21,13 @@
     <g font-size="16" fill="#53666b">
       <text x="59" y="241">Courses → modules</text><text x="59" y="268">Select page items</text><text x="59" y="295">Canvas API</text>
       <text x="290" y="241">Panopto / Zoom</text><text x="290" y="268">Sign in through Edge</text><text x="290" y="295">Read existing captions</text>
-      <text x="521" y="241">Keep extracted text</text><text x="521" y="268">and recording URLs</text><text x="521" y="295">No audio transcription</text>
-      <text x="752" y="241">Async model calls</text><text x="752" y="268">Detailed study notes</text><text x="752" y="295">Check against sources</text>
+      <text x="521" y="241">Keep extracted text</text><text x="521" y="268">and recording URLs</text><text x="521" y="295">Video captions</text>
+      <text x="752" y="241">Async model calls</text><text x="752" y="268">Detailed study notes</text><text x="752" y="295">Recording links</text>
       <text x="983" y="241">Course / module</text><text x="983" y="268">Transcript + summary</text><text x="983" y="295">Source-linked files</text>
     </g>
     <path d="M1062 323v35H40" fill="none" stroke="#849b91" stroke-width="1.5" stroke-dasharray="6 5"/>
-    <text x="40" y="394" font-size="18" font-weight="700">Prepared for a separate LLM wiki or RAG workflow</text>
-    <text x="40" y="424" font-size="16" fill="#53666b">The repository collects and summarizes material; it does not implement retrieval or question answering.</text>
+    <text x="40" y="394" font-size="18" font-weight="700">Notes for LLM wiki and RAG workflows</text>
+    <text x="40" y="424" font-size="16" fill="#53666b">Exports retain course, module, and recording links for downstream tools.</text>
     <text x="40" y="456" font-size="14" fill="#53666b">Canvas modules, recording captions, and source-linked study notes.</text>
   </g>
 </svg>
