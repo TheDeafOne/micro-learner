@@ -31,7 +31,7 @@ The repository includes an existing [ensemble-learning transcript](data/courses/
 
 Output is written below `data/courses/<course>/<module>/`. Each selected page gets a `transcript_*.md` file and, when transcripts are available, a `summary_*.md` file. Both retain the recording URLs as section headings.
 
-This is a collection and preparation tool. It does not implement a vector index, retrieval service, or question-answering interface. It also does not transcribe audio, interpret video frames, or extract slide/PDF contents; the recording paths depend on existing captions. Generated summaries are a starting point for study, with the transcript and source recording available for checking details.
+The current workflow prepares existing video captions for a separate wiki or retrieval system. Generated summaries are a starting point for study, with the transcript and source recording available for checking details.
 
 ## Quick start
 
